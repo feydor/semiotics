@@ -1,7 +1,11 @@
 /* aq.rs - gematric and digital reduction functions for Anglossic Qabbala (AQ) */
-use std::env;
+use std::io;
+use std::io::Write;
 use lazy_static::lazy_static;
+use clap::{Arg, App, AppSettings};
 const PROJECT_NAME: &str = "aq";
+const VERSION: &str = "0.1.0";
+const ABOUT: &str = "deCrypter for Anglobal communications";
 const ALPHANUM: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 lazy_static! {
@@ -9,16 +13,61 @@ lazy_static! {
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        eprintln!("usage: {} [alphanumeric string]", PROJECT_NAME);
-        std::process::exit(1);
-    }
+    let args = App::new(PROJECT_NAME)
+        .version(VERSION)
+        .about(ABOUT)
+        .setting(AppSettings::ArgRequiredElseHelp)
+        .arg(Arg::with_name("QUERY")
+            .help("an alphanumeric-encoded string")
+            .index(1))
+        .arg(Arg::with_name("i")
+            .short("i")
+            .multiple(false)
+            .help("start interactive prompt"))
+        .get_matches();
 
-    let query = String::from(&args[1]).chars().filter(|&c| c.is_alphanumeric() ).collect::<String>().to_uppercase();
-    print!("query: {} == ", query);
-    let output = nummificate(&query); // contains the complete digital reduction of query
-    println!("{}", output[0]); // only output the first
+    let q = match args.value_of("QUERY") {
+        None => "",
+        Some(query) => query,
+    };
+    let query = sanitize_query(q).chars().filter(|&c| c.is_alphanumeric() ).collect::<String>().to_uppercase();
+    if args.is_present("i") {
+        start_prompt(&query)
+    } else {
+        println!("query: {} == {}", query, nummificate(&query)[0]);
+    }
+}
+
+fn start_prompt(initial: &str) {
+    println!("{}\n{}", PROJECT_NAME, VERSION);
+    let mut buffer = match initial.is_empty() {
+        true => String::new(),
+        false => String::from(initial),
+    };
+    let stdin = io::stdin();
+    
+    loop {
+        if !buffer.is_empty() { print_results(&buffer); }
+        buffer.clear();
+
+        print!{"> "};
+        io::stdout().flush().unwrap();
+        stdin.read_line(&mut buffer).expect("error: unable to read user input");
+        buffer = buffer.trim().to_uppercase();
+        if buffer.is_empty() || is_quit(&buffer) {
+            break;
+        }
+        print_results(&buffer);
+        buffer.clear();
+    }
+}
+
+fn sanitize_query(q: &str) -> String {
+    return q.chars().filter(|&c|c.is_alphanumeric()).collect::<String>().to_uppercase();
+}
+
+fn print_results(buffer: &String) {
+    println!("{} == {}", buffer, nummificate(&sanitize_query(&buffer))[0]);
 }
 
 // full digital-reduction of any query string using August Barrow's method of Anglossic Qabbala
@@ -68,3 +117,10 @@ fn is_single_digit(n: &i32) -> bool {
     n.abs() < 10
 }
 
+fn is_quit(q: &str) -> bool {
+    match q {
+        "q" => true,
+        "Q" => true,
+        _ => false,
+    }
+}
