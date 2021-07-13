@@ -3,22 +3,31 @@
  */
 use clap::{Arg, App, AppSettings};
 use lazy_static::lazy_static;
+#[macro_use] extern crate prettytable;
+use prettytable::{Table, Row, Cell, format};
 use std::collections::HashMap;
 use std::convert::TryInto;
 const PROGRAM_NAME: &str = "prim";
 const PRIM: &str = "₱";
+const I32MAXDIGITS: u32 = 10;
 
 lazy_static! {
     static ref PENTAZYGON_PLUS: Vec<i32> = (0..19).collect();
     static ref NUMONYMS: Vec<String> = vec!["zero", "one", "two", "three", "four", "five",
         "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen",
-        "sixteen", "seventeen", "eighteen", "nineteen"]
+        "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
             .into_iter()
             .map(String::from)
             .collect();
     static ref PLACEHOLDERS: Vec<&'static str> = vec!["hundred", "thousand", "million", "billion"];
     static ref TENS: HashMap<&'static str, i32> = [("twenty", 20), ("thirty", 30), ("fourty", 40), ("fifty", 50),
         ("sixty", 60), ("seventy", 70), ("eighty", 80), ("ninety", 90)].iter().cloned().collect();
+}
+
+struct PrimResult {
+    prim: i32,
+    eng: String,
+    pd: i32,
 }
 
 fn main() {
@@ -32,26 +41,46 @@ fn main() {
             .index(1))
         .get_matches();
     
-    let query = args.value_of("QUERY").unwrap();
-    primitivize(&query);
+    let q = args.value_of("QUERY").unwrap();
+    primitivize(&q.chars().filter(|&c|c.is_alphabetic()).collect::<String>());
 }
 
 // tally, then anglicize; repeat
 // EX: walrus => ₱6 => six => ₱3 => three => (₱4 => four)^inf
 // "all roads lead to four"
 fn primitivize(query: &str) {
+    let mut res: Vec::<PrimResult> = Vec::new();
     let mut prim = -1;
     let mut out = String::from(query);
-    print!("{} ==", query);
     while prim != 4 {
         prim = tally(&out);
         out = anglicize(&prim);
-        print!(" {}{} == {} ", PRIM, prim, out);
-        if prim != 4 {
-            print!("==")
-        }
-        println!("\n||| PD = {}|||", pd(nummify(&out)));
+        res.push(build_prim_result(prim, &out, pd(nummify(&out))));
     }
+    print_results(&query, &res);
+}
+
+fn build_prim_result(prim: i32, eng: &String, pd: i32) -> PrimResult {
+    PrimResult {
+        prim,
+        eng: eng.to_string(),
+        pd,
+    }
+}
+
+fn print_results(query: &str, prims: &Vec::<PrimResult>) {
+    let title = "Primitive Method (₱)";
+    println!("+{:-<width$} {} {:-<width$}+", "", title, "", width=query.len()/2);
+    println!(" query: '{}' has ₱{:<width$} ", query, prims[0].prim, width=3);
+    
+    let mut table = Table::new();
+    table.set_format(*format::consts::FORMAT_CLEAN);
+    table.add_row(row!["PRIM", "ANGL.", "PD"]);
+    for res in prims {
+        table.add_row(row![format!("₱{}", res.prim), res.eng, res.pd]);
+    }
+    table.printstd();
+    println!("+{:-<width$}+", "", width=query.len() + title.len());
 }
 
 // count the letters in a word
@@ -82,17 +111,23 @@ fn anglicize(prim: &i32) -> String {
 // supports numbers up to INT32 max
 fn nummify(query: &str) -> i32 {
     if query.is_empty() { return 0; }
-    let numonyms: Vec<&str> = query.split(" ").filter(|&num| !PLACEHOLDERS.contains(&num)).collect();
+    let numonyms: Vec<&str> = query.split(" ").collect();
     let mut rem: u32 = numonyms.len().try_into().unwrap();
-    if rem > 15 { panic!("query is larger than 15 numonyms"); }
+    if rem > I32MAXDIGITS { panic!("query is larger than {} numonyms", I32MAXDIGITS); }
     let mut res = 0;
 
     // from left to rightmost digit, convert into numeric and add appropriate power of ten
     for numonym in &numonyms {
-        res += index_into_numonym(&numonym.trim()) * i32::pow(10, rem-1);
+        if PLACEHOLDERS.contains(&numonym.trim()) {
+            res -= 1;
+            continue;
+        }
+        res += match TENS.contains_key(&numonym.trim()) {
+            true => index_into_numonym(&numonym.trim()),
+            false => index_into_numonym(&numonym.trim()) * i32::pow(10, rem-1),
+        };
         rem -= 1;
     }
-    println!("\n res= {}", res);
     res
 }
 
@@ -104,7 +139,7 @@ fn pd(n: i32) -> i32 {
 fn index_into_numonym(num: &str) -> i32 {
     match get_num_index(&String::from(num), &NUMONYMS) {
         Some(i) => return PENTAZYGON_PLUS[i],
-        None => println!("'{}' is not in PENTAZYGON_PLUS.", num),
+        None => "" // do nothing
     };
 
     match TENS.get(&num) {
@@ -157,7 +192,7 @@ fn tens(n: i32) -> String {
         2 => out += "twenty",
         3 => out += "thirty",
         4 => out += "fourty",
-        5 => out += "fivety",
+        5 => out += "fifty",
         6 => out += "sixty",
         7 => out += "seventy",
         8 => out += "eighty",
