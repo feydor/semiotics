@@ -20,11 +20,13 @@ fn main() {
     primitivize(&query);
 }
 
+// tally, then anglicize; repeat
+// EX: walrus => ₱6 => six => ₱3 => three => (₱4 => four)^inf
+// "all roads lead to four"
 fn primitivize(query: &str) {
     let mut prim = -1;
     let mut out = String::from(query);
-    out = out.chars().filter(|&c|c.is_alphabetic()).collect::<String>();
-    while prim != 0 {
+    while prim != 4 {
         prim = tally(&out);
         out = anglicize(&prim);
         // print_result(&out, &prim);
@@ -32,15 +34,17 @@ fn primitivize(query: &str) {
     }
 }
 
-// NOTE: remove whitespace before passing
+// count the letters in a word
+// NOTE: ignores whitespace
 fn tally(word: &str) -> i32 {
     let mut count = 0;
-    for _ in word.chars(){
+    for _ in word.chars().filter(|&c|c.is_alphabetic()).collect::<Vec<char>>(){
         count += 1;
     }
     count
 }
 
+// the english equivalent of prim
 fn anglicize(prim: &i32) -> String {
     let mut out = String::new();
     let mut itr = 0;
@@ -59,23 +63,26 @@ fn translate_three_digits(n: i32) -> String {
     let mut output = String::new();
 
     // hundreds place
-    if n / 100 != 0 {
+    if (n / 100) % 10 != 0 {
         output += &hundreds(n);
     }
     
     // tens place
-    if n / 10 != 0 {
-        output += &tens(n % 100);
+    if (n / 10) % 10 != 0 {
+        output += &tens(n%100);
+        return output;
     }
 
     // ones place
-    // output += &ones(n % 10);
+    if n % 10 != 0 {
+        output += &ones(n % 10);
+    }
     return output;
 }
 
 fn hundreds(n: i32) -> String {
     let mut out = String::new();
-    out += ones(n % 10);
+    out += ones((n/100)%10);
     out += " hundred";
     return out;
 }
