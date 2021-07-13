@@ -26,15 +26,15 @@ fn main() {
             .help("start interactive prompt"))
         .get_matches();
 
-    let q = match args.value_of("QUERY") {
-        None => "",
-        Some(query) => query,
+    let query: String = match args.value_of("QUERY") {
+        None => String::new(),
+        Some(query) => sanitize_query(&query),
     };
-    let query = sanitize_query(q).chars().filter(|&c| c.is_alphanumeric() ).collect::<String>().to_uppercase();
+
     if args.is_present("i") {
         start_prompt(&query)
     } else {
-        println!("query: {} == {}", query, nummificate(&query)[0]);
+        print_results(&query);
     }
 }
 
@@ -62,12 +62,17 @@ fn start_prompt(initial: &str) {
     }
 }
 
+// removes non-alphanumerics and converts to uppercase
 fn sanitize_query(q: &str) -> String {
-    return q.chars().filter(|&c|c.is_alphanumeric()).collect::<String>().to_uppercase();
+    return q.chars().filter(|&c|c.is_alphanumeric() || c.is_whitespace()).collect::<String>().to_uppercase();
 }
 
 fn print_results(buffer: &String) {
-    println!("{} == {}", buffer, nummificate(&sanitize_query(&buffer))[0]);
+    print!("{}", buffer);
+    for res in &nummificate(&sanitize_query(&buffer)) {
+        print!(" == {}", res);
+    }
+    print!("\n");
 }
 
 // full digital-reduction of any query string using August Barrow's method of Anglossic Qabbala
