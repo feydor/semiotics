@@ -70,7 +70,7 @@ fn sanitize_query(q: &str) -> String {
 fn print_results(buffer: &String) {
     print!("{}", buffer);
     for res in &nummificate(&sanitize_query(&buffer)) {
-        print!(" == {}", res);
+        print!(" -> {}", res);
     }
     print!("\n");
 }
@@ -83,7 +83,7 @@ fn nummificate(query: &str) -> Vec<i32> {
     res.push(n);
 
     while !is_single_digit(&n) {
-        n = dreduce(&n);
+        n = decimate(&n);
         res.push(n);
     }
     return res;
@@ -109,12 +109,12 @@ fn aq(query: &String) -> i32 {
     return AQ[i] + aq(&chars.join(""))
 }
 
-// digital reduction; modulo-summation
+// decimation; digital reduction; plexing; modulo-summation
 // EX: 140 => 5, 999 => 27
-fn dreduce(n: &i32) -> i32 {
+fn decimate(n: &i32) -> i32 {
     match is_single_digit(&n) {
         true => n.abs(),
-        false => n.abs() % 10 + dreduce(&(n/10)),
+        false => n.abs() % 10 + decimate(&(n/10)),
     }
 }
 

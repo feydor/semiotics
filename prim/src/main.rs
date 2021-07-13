@@ -2,8 +2,24 @@
  * more info elsewhere: zerophilosophy.substack.com/p/qabbalistic-oddments-00
  */
 use clap::{Arg, App, AppSettings};
+use lazy_static::lazy_static;
+use std::collections::HashMap;
+use std::convert::TryInto;
 const PROGRAM_NAME: &str = "prim";
 const PRIM: &str = "₱";
+
+lazy_static! {
+    static ref PENTAZYGON_PLUS: Vec<i32> = (0..19).collect();
+    static ref NUMONYMS: Vec<String> = vec!["zero", "one", "two", "three", "four", "five",
+        "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen",
+        "sixteen", "seventeen", "eighteen", "nineteen"]
+            .into_iter()
+            .map(String::from)
+            .collect();
+    static ref PLACEHOLDERS: Vec<&'static str> = vec!["hundred", "thousand", "million", "billion"];
+    static ref TENS: HashMap<&'static str, i32> = [("twenty", 20), ("thirty", 30), ("fourty", 40), ("fifty", 50),
+        ("sixty", 60), ("seventy", 70), ("eighty", 80), ("ninety", 90)].iter().cloned().collect();
+}
 
 fn main() {
     let args = App::new(PROGRAM_NAME)
@@ -34,6 +50,7 @@ fn primitivize(query: &str) {
         if prim != 4 {
             print!("==")
         }
+        println!("\n||| PD = {}|||", pd(nummify(&out)));
     }
 }
 
@@ -58,6 +75,46 @@ fn anglicize(prim: &i32) -> String {
         n /= 1000;
     }
     out
+}
+
+// the numerical equivalent of query
+// query should be a series of space-seperated numonyms (the english numbers)
+// supports numbers up to INT32 max
+fn nummify(query: &str) -> i32 {
+    if query.is_empty() { return 0; }
+    let numonyms: Vec<&str> = query.split(" ").filter(|&num| !PLACEHOLDERS.contains(&num)).collect();
+    let mut rem: u32 = numonyms.len().try_into().unwrap();
+    if rem > 15 { panic!("query is larger than 15 numonyms"); }
+    let mut res = 0;
+
+    // from left to rightmost digit, convert into numeric and add appropriate power of ten
+    for numonym in &numonyms {
+        res += index_into_numonym(&numonym.trim()) * i32::pow(10, rem-1);
+        rem -= 1;
+    }
+    println!("\n res= {}", res);
+    res
+}
+
+// calculates the Primitive Discrepancy (PD) of number
+fn pd(n: i32) -> i32 { 
+    return n - tally(&anglicize(&n));
+}
+
+fn index_into_numonym(num: &str) -> i32 {
+    match get_num_index(&String::from(num), &NUMONYMS) {
+        Some(i) => return PENTAZYGON_PLUS[i],
+        None => println!("'{}' is not in PENTAZYGON_PLUS.", num),
+    };
+
+    match TENS.get(&num) {
+        Some(&i) => return i,
+        None => panic!("index to numonym '{}' not found!", num),
+    }
+}
+
+fn get_num_index(num: &String, array: &Vec<String>) -> Option<usize> {
+    array.iter().position(|x| x == num)
 }
 
 // FIXME: only supports up to 999 letters
