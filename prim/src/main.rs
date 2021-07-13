@@ -11,7 +11,7 @@ fn main() {
         .about(PRIM)
         .setting(AppSettings::ArgRequiredElseHelp)
         .arg(Arg::with_name("QUERY")
-            .help("a word")
+            .help("a word of length < 999")
             .required(true)
             .index(1))
         .get_matches();
@@ -26,11 +26,14 @@ fn main() {
 fn primitivize(query: &str) {
     let mut prim = -1;
     let mut out = String::from(query);
+    print!("{} ==", query);
     while prim != 4 {
         prim = tally(&out);
         out = anglicize(&prim);
-        // print_result(&out, &prim);
-        println!("{} == {} == {}{}", query, out, PRIM, prim);
+        print!(" {}{} == {} ", PRIM, prim, out);
+        if prim != 4 {
+            print!("==")
+        }
     }
 }
 
@@ -47,18 +50,17 @@ fn tally(word: &str) -> i32 {
 // the english equivalent of prim
 fn anglicize(prim: &i32) -> String {
     let mut out = String::new();
-    let mut itr = 0;
     let mut n = *prim;
     while n > 0 {
         if n % 1000 != 0 {
             out += &translate_three_digits(n % 1000);
         }
         n /= 1000;
-        itr += 1;
     }
     out
 }
 
+// FIXME: only supports up to 999 letters
 fn translate_three_digits(n: i32) -> String {
     let mut output = String::new();
 
@@ -75,7 +77,7 @@ fn translate_three_digits(n: i32) -> String {
 
     // ones place
     if n % 10 != 0 {
-        output += &ones(n % 10);
+        output += &ones(n%10);
     }
     return output;
 }
@@ -83,7 +85,7 @@ fn translate_three_digits(n: i32) -> String {
 fn hundreds(n: i32) -> String {
     let mut out = String::new();
     out += ones((n/100)%10);
-    out += " hundred";
+    out += " hundred ";
     return out;
 }
 
@@ -105,8 +107,10 @@ fn tens(n: i32) -> String {
         9 => out += "ninety",
         _ => panic!("input was not 2-9"),
     }
-    out += " ";
-    out += ones(n%10);
+    if n%10 != 0 {
+        out += " ";
+        out += ones(n%10);
+    }
     return out;
 }
 
