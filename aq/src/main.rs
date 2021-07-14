@@ -1,8 +1,8 @@
 /* aq.rs - gematric and digital reduction functions for Anglossic Qabbala (AQ) */
+use clap::{App, AppSettings, Arg};
+use lazy_static::lazy_static;
 use std::io;
 use std::io::Write;
-use lazy_static::lazy_static;
-use clap::{Arg, App, AppSettings};
 const PROJECT_NAME: &str = "aq";
 const VERSION: &str = "0.1.0";
 const ABOUT: &str = "deCrypter for Anglobal communications";
@@ -17,13 +17,17 @@ fn main() {
         .version(VERSION)
         .about(ABOUT)
         .setting(AppSettings::ArgRequiredElseHelp)
-        .arg(Arg::with_name("QUERY")
-            .help("an alphanumeric-encoded string")
-            .index(1))
-        .arg(Arg::with_name("i")
-            .short("i")
-            .multiple(false)
-            .help("start interactive prompt"))
+        .arg(
+            Arg::with_name("QUERY")
+                .help("an alphanumeric-encoded string")
+                .index(1),
+        )
+        .arg(
+            Arg::with_name("i")
+                .short("i")
+                .multiple(false)
+                .help("start interactive prompt"),
+        )
         .get_matches();
 
     let query: String = match args.value_of("QUERY") {
@@ -45,14 +49,18 @@ fn start_prompt(initial: &str) {
         false => String::from(initial),
     };
     let stdin = io::stdin();
-    
+
     loop {
-        if !buffer.is_empty() { print_results(&buffer); }
+        if !buffer.is_empty() {
+            print_results(&buffer);
+        }
         buffer.clear();
 
-        print!{"> "};
+        print! {"> "};
         io::stdout().flush().unwrap();
-        stdin.read_line(&mut buffer).expect("error: unable to read user input");
+        stdin
+            .read_line(&mut buffer)
+            .expect("error: unable to read user input");
         buffer = buffer.trim().to_uppercase();
         if buffer.is_empty() || is_quit(&buffer) {
             break;
@@ -64,7 +72,11 @@ fn start_prompt(initial: &str) {
 
 // removes non-alphanumerics and converts to uppercase
 fn sanitize_query(q: &str) -> String {
-    return q.chars().filter(|&c|c.is_alphanumeric() || c.is_whitespace()).collect::<String>().to_uppercase();
+    return q
+        .chars()
+        .filter(|&c| c.is_alphanumeric() || c.is_whitespace())
+        .collect::<String>()
+        .to_uppercase();
 }
 
 fn print_results(buffer: &String) {
@@ -93,7 +105,9 @@ fn nummificate(query: &str) -> Vec<i32> {
 // NOTE: query can be non-alphanumerical input (it will be ignored in the calculation)
 // EX: aq("aok") -> 54
 fn aq(query: &String) -> i32 {
-    if query.is_empty() { return 0 }
+    if query.is_empty() {
+        return 0;
+    }
     let mut chars: Vec<_> = query.split("").collect();
     chars.remove(0);
     chars.pop();
@@ -106,7 +120,7 @@ fn aq(query: &String) -> i32 {
         None => return 0 + aq(&chars.join("")),
         Some(index) => i = index,
     }
-    return AQ[i] + aq(&chars.join(""))
+    return AQ[i] + aq(&chars.join(""));
 }
 
 // decimation; digital reduction; plexing; modulo-summation
@@ -114,7 +128,7 @@ fn aq(query: &String) -> i32 {
 fn decimate(n: &i32) -> i32 {
     match is_single_digit(&n) {
         true => n.abs(),
-        false => n.abs() % 10 + decimate(&(n/10)),
+        false => n.abs() % 10 + decimate(&(n / 10)),
     }
 }
 
