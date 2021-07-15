@@ -7,6 +7,7 @@ USAGE:
 FLAGS:
     -h, --help       Prints help information
     -i               start interactive prompt
+    -t               prints hex trinomes
     -V, --version    Prints version information
 
 ARGS:

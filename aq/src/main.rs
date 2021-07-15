@@ -9,6 +9,7 @@ const PROJECT_NAME: &str = "aq";
 const VERSION: &str = "0.1.0";
 const ABOUT: &str = "deCrypter for Anglobal communications";
 const ALPHANUM: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+static mut PRINT_HEXTRINOME: bool = false;
 
 lazy_static! {
     static ref AQ: Vec<i32> = (0..36).collect();
@@ -30,12 +31,24 @@ fn main() {
                 .multiple(false)
                 .help("start interactive prompt"),
         )
+        .arg(
+            Arg::with_name("t")
+                .short("t")
+                .multiple(false)
+                .help("print hex trinomes"),
+        )
         .get_matches();
 
     let query: String = match args.value_of("QUERY") {
         None => String::new(),
         Some(query) => sanitize_query(&query),
     };
+
+    if args.is_present("t") {
+        unsafe {
+            PRINT_HEXTRINOME = true;
+        }
+    }
 
     if args.is_present("i") {
         start_prompt(&query)
@@ -88,16 +101,22 @@ fn print_results(buffer: &String) {
     }
     print!("\n");
 
-    // println!("{:->width$} THE IRON LAW OF SIX {:->width$}", "", "", width=96/2);
-    let mut i = 0;
-    let mut trinomes = Vec::<u8>::new();
-    for c in buffer.chars().filter(|&c|c.is_alphanumeric()).collect::<String>().chars() {
-        let trinome: u8 = nummificate(&c.to_string())[0].try_into().unwrap();
-        trinomes.push(trinome);
-        i += 1;
-        if i % 3 == 0 {
-            print_hex_trinomes(&trinomes);
-            trinomes.clear();
+    if unsafe {PRINT_HEXTRINOME} {
+        let mut i = 0;
+        let mut trinomes = Vec::<u8>::new();
+        let mut title_printed = false;
+        for c in buffer.chars().filter(|&c|c.is_alphanumeric()).collect::<String>().chars() {
+            let trinome: u8 = nummificate(&c.to_string())[0].try_into().unwrap();
+            trinomes.push(trinome);
+            i += 1;
+            if i % 3 == 0 {
+                if !title_printed {
+                    println!("{:->width$} THE IRON LAW OF SIX {:->width$}", "", "", width=40);
+                }
+                title_printed = true;
+                print_hex_trinomes(&trinomes);
+                trinomes.clear();
+            }
         }
     }
 }
