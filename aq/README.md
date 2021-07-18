@@ -13,3 +13,6 @@ FLAGS:
 ARGS:
     <QUERY>    an alphanumeric-encoded string
 ```
+## TODO:
+- hex trinomes represent groups of three characters; print them across, diagonally.
+- derivation of the four Basins for each query (as an option)
