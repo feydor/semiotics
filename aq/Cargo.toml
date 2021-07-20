@@ -4,9 +4,16 @@ version = "0.1.0"
 authors = ["Victor Reyes <vreyes85739@outlook.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "aq"
+path = "src/lib.rs"
+
+[[bin]]
+name = "aqq"
+path = "src/main.rs"
 
 [dependencies]
+termion = "*"
 lazy_static = "1.4.0"
 clap = "~2.27.0"
 colored = "2"

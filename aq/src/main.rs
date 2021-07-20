@@ -1,19 +1,22 @@
 /* aq.rs - gematric and digital reduction functions for Anglossic Qabbala (AQ) */
+extern crate termion;
+use termion::event::Key;
+use termion::input::TermRead;
+use termion::raw::IntoRawMode;
 use clap::{App, AppSettings, Arg};
-use lazy_static::lazy_static;
-use std::io;
-use std::io::Write;
 use colored::*;
 use std::convert::TryInto;
+use std::io::{Read, Write, stdout, stdin};
+use std::io::BufRead;
+
+use aq::*;
+
 const PROJECT_NAME: &str = "aq";
 const VERSION: &str = "0.1.0";
 const ABOUT: &str = "deCrypter for Anglobal communications";
-const ALPHANUM: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-static mut PRINT_HEXTRINOME: bool = false;
 
-lazy_static! {
-    static ref AQ: Vec<i32> = (0..36).collect();
-}
+static mut PRINT_HEXTRINOME: bool = false;
+const BACKSPACE: char = 8u8 as char;
 
 fn main() {
     let args = App::new(PROJECT_NAME)
@@ -63,25 +66,63 @@ fn start_prompt(initial: &str) {
         true => String::new(),
         false => String::from(initial),
     };
-    let stdin = io::stdin();
+
+    // init all streams
+    let stdin = stdin();
+    let mut stdout = stdout().into_raw_mode().unwrap();
+
+    let mut keys = stdin.keys();
 
     loop {
-        if !buffer.is_empty() {
-            print_results(&buffer);
-        }
-        buffer.clear();
+        print_and_clear(&mut buffer);
+        print!("> ");
+        stdout.flush().unwrap();
 
-        print! {"> "};
-        io::stdout().flush().unwrap();
+        let c = keys.next().unwrap().unwrap();
+
+        match c {
+            Key::Char('q') => break,
+            Key::Esc => break,
+            Key::Left => println!("←"),
+            Key::Right => println!("→"),
+            Key::Up => println!("↑"),
+            Key::Down => println!("↓"),
+            Key::Backspace => println!("×"),
+            _ => {}
+        }
+        // stdout.flush().unwrap();
+
+        /*
+         match b {
+                // Quit
+                b'q' => return,
+                // Clear the screen
+                b'c' => write!(stdout, "{}", termion::clear::All),
+                // Set red color
+                b'r' => write!(stdout, "{}", termion::color::Fg(termion::color::Rgb(124, 252, 0))),
+                // Write it to stdout.
+                a => write!(stdout, "{}", a),
+            }
+            .unwrap();
+
+             stdout.flush().unwrap();
+             */
+
+        /*
         stdin
             .read_line(&mut buffer)
             .expect("error: unable to read user input");
         buffer = buffer.trim().to_uppercase();
+
         if buffer.is_empty() || is_quit(&buffer) {
             break;
+        } else if buffer == "^[[D" {
+            stdout.write_all(b"\x1B[1D");
         }
-        print_results(&buffer);
-        buffer.clear();
+
+        print!("{:?}", buffer);
+        print_and_clear(&buffer);
+        */
     }
 }
 
@@ -92,6 +133,13 @@ fn sanitize_query(q: &str) -> String {
         .filter(|&c| c.is_alphanumeric() || c.is_whitespace())
         .collect::<String>()
         .to_uppercase();
+}
+
+fn print_and_clear(buffer: &mut String) {
+    if !buffer.is_empty() {
+        print_results(&buffer);
+    }
+    buffer.clear();
 }
 
 fn print_results(buffer: &String) {
@@ -138,55 +186,6 @@ fn print_hex_trinomes(trinomes: &Vec<u8>) {
         print!("{} ", s.on_truecolor(trinomes[0]*SCALE, trinomes[1]*SCALE, trinomes[2]*SCALE));
     }
     print!{"\n"};
-}
-
-// full digital-reduction of any query string using August Barrow's method of Anglossic Qabbala
-// EX: nummificate("aok") -> [54, 9]
-fn nummificate(query: &str) -> Vec<i32> {
-    let mut res = Vec::<i32>::new();
-    let mut n = aq(&String::from(query));
-    res.push(n);
-
-    while !is_single_digit(&n) {
-        n = decimate(&n);
-        res.push(n);
-    }
-    return res;
-}
-
-// English => AlphaNumerical => Numerical (via AQ)
-// NOTE: query can be non-alphanumerical input (it will be ignored in the calculation)
-// EX: aq("aok") -> 54
-fn aq(query: &String) -> i32 {
-    if query.is_empty() {
-        return 0;
-    }
-    let mut chars: Vec<_> = query.split("").collect();
-    chars.remove(0);
-    chars.pop();
-
-    // index the query char-wise from last to first into ALPHANUM,
-    // giving the index of the numerical value in AQ; sum it
-    let curr = chars.pop().expect("query is empty!");
-    let i: usize;
-    match ALPHANUM.find(curr) {
-        None => return 0 + aq(&chars.join("")),
-        Some(index) => i = index,
-    }
-    return AQ[i] + aq(&chars.join(""));
-}
-
-// decimation; digital reduction; plexing; modulo-summation
-// EX: 140 => 5, 999 => 27
-fn decimate(n: &i32) -> i32 {
-    match is_single_digit(&n) {
-        true => n.abs(),
-        false => n.abs() % 10 + decimate(&(n / 10)),
-    }
-}
-
-fn is_single_digit(n: &i32) -> bool {
-    n.abs() < 10
 }
 
 fn is_quit(q: &str) -> bool {

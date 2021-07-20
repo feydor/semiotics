@@ -13,4 +13,6 @@ example:
     4 --> 10 ... ||| GULF OF DEREGULATION ||| ----> 4 (= 0)
     ^     |
     |_____|
+    PLATO = 10 = 1
+    PYTHAGORAS = 4
 ```
