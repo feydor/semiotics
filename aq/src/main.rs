@@ -7,13 +7,15 @@ use clap::{App, AppSettings, Arg};
 use colored::*;
 use std::convert::TryInto;
 use std::io::{self, Read, Write};
+use std::fmt::Display;
+use std::io::StdoutLock;
 // use std::io::BufRead;
 
 const PROJECT_NAME: &str = "aq";
 const VERSION: &str = "0.1.0";
 const ABOUT: &str = "deCrypter for Anglobal communications";
 
-struct Tui<R, W: Write> {
+struct Tui<R> {
     state: ConsoleState,
     query: String,           // the current query
     line: InputLine,
@@ -22,7 +24,6 @@ struct Tui<R, W: Write> {
     prompt: String,          // the default prompt
     do_print_trinomes: bool, // optional trinome printing
     stdin: R,                // standard input
-    stdout: W,               // standard output
 }
 struct Coord {
     x: usize,
@@ -37,6 +38,13 @@ enum ConsoleState {
     HistoryDown,
     Done,
     Quit
+}
+
+pub enum TuiResult {
+    // Suggestions(String),
+    Done(String),
+    Quit,
+    Ready,
 }
 
 #[derive(Default, Clone)]
@@ -94,6 +102,21 @@ impl InputLine {
     pub fn cursor_right(&mut self) {
         self.cursor = self.line.len().min(self.cursor + 1);
     }
+
+    pub fn backspace(&mut self) {
+        if self.cursor == 0 { return; }
+        if self.cursor > self.line.len() {
+            self.line.pop();
+        } else {
+            self.line = self
+                .line
+                .chars()
+                .take(self.cursor - 1)
+                .chain(self.line.chars().skip(self.cursor))
+                .collect()
+        }
+        self.cursor -= 1;
+    }
 }
 
 fn main() {
@@ -134,14 +157,17 @@ fn main() {
     let mut stderr = stderr.lock();
 
     // go into raw mode
-    let stdout = stdout.into_raw_mode().unwrap();
+    // let stdout = stdout.into_raw_mode().unwrap();
 
-    init(stdout, stdin, args, query);
+    init_and_loop(stdin, &mut stdout, args, query);
 }
 
-fn init<R: Read, W: Write>(mut stdout: W, stdin: R, args: clap::ArgMatches, init_query: String) {
+fn init_and_loop<R: Read>(stdin: R, stdout: &mut StdoutLock, args: clap::ArgMatches, init_query: String) {
+    // init Tui struct
     let size = termion::terminal_size().unwrap();
+    let mut stdout = stdout.into_raw_mode().unwrap();
     let curr_pos = stdout.cursor_pos().unwrap();
+
     let  mut tui = Tui {
         query: init_query,
         state: ConsoleState::Start,
@@ -156,7 +182,6 @@ fn init<R: Read, W: Write>(mut stdout: W, stdin: R, args: clap::ArgMatches, init
         },
         prompt: "> ".to_owned(),
         do_print_trinomes: false,
-        stdout: stdout,
         stdin: stdin.keys(),
     };
 
@@ -164,70 +189,82 @@ fn init<R: Read, W: Write>(mut stdout: W, stdin: R, args: clap::ArgMatches, init
     if args.is_present("t") {
         tui.do_print_trinomes = true;
     }
-
-    // start prompt or handle query
-    if args.is_present("i") {
-        tui.start_prompt();
-    } else {
+    // handle query
+    if !args.is_present("i") {
         tui.print_result_and_clear();
+        return;
+    }
+
+    // start prompt
+    write!(stdout, "{}\n\r{}\n\r", PROJECT_NAME, VERSION).unwrap();
+    let mut state = TuiResult::Ready;
+    loop {
+        state = match state {
+            TuiResult::Ready => tui.run(),
+            TuiResult::Quit => return,
+            TuiResult::Done(query) => {
+                /*
+                if let Err(e) = self.save_history(cli.history()) {
+                    eprintln!("Could not save query history: {}", e);
+                }
+                */
+                tui.print_results(vec![format!("{}", query)])
+                /*
+                match run_query(&query) {
+                    Ok(results) => tui.print_results(results),
+                    Err(e) => tui.print_results(vec![format!("{}", e)]),
+                }
+                */
+            }
+        }
     }
 }
 
-impl <R: Iterator<Item=Result<Key, std::io::Error>>, W: Write> Tui<R, W> {
-    fn start_prompt(&mut self) {
-        write!(self.stdout, "{}\n\r{}\n\r", PROJECT_NAME, VERSION).unwrap();
-        self.print_result_and_clear();
+impl <R: Iterator<Item=Result<Key, std::io::Error>>> Tui<R> {
+    fn run(&mut self) -> TuiResult {
+        //self.print_result_and_clear();
         // let mut buffer = String::new();
 
-        self.print_prompt();
+        // self.print_prompt();
+        self.state = ConsoleState::Start;
+
+        // go into raw mode (destroy at end of run)
+        let stdout = io::stdout().into_raw_mode().unwrap();
+        let mut stdout = stdout.lock();
         loop {
-            // read a single byte from stdin
-            let b = self.stdin.next().unwrap().unwrap();
-
-            match b {
-                Key::Esc | Key::Ctrl('q') | Key::Ctrl('z') => return,
-                Key::Backspace => {
-                    // move cursor left, print space, curr char from buffer
-                    self.cursor_left();
-                    self.delete_at_cursor();
-                    self.write_str(" ");
-                    self.refresh_input_prompt();
+            self.render(&mut stdout);
+            self.state = match self.state {
+                ConsoleState::Start => Some(ConsoleState::Typing),
+                ConsoleState::Typing => {
+                    let key = self.stdin.next().unwrap().unwrap();
+                    typing(key, &mut self.line)
                 }
-                Key::Left => {
-                    self.cursor_left();
-                },
-                Key::Right => {
-                    // cursor can be one space after the query and prompt
-                    if self.curr_pos.x < self.prompt.len() + self.query.len() + 1 {
-                        self.cursor_right();
+                ConsoleState::Done => {
+                    let query = std::mem::take(&mut self.line).into_string();
+                    //self.history.save(query.clone());
+                    // Put it in the right state for next time
+                    //self.state = ConsoleState::Typing;
+                    if query.is_empty() {
+                        return TuiResult::Quit;
+                    } else {
+                        return TuiResult::Done(query);
                     }
-                },
-                Key::Char('\n') => {
-                    self.cursor_newline_return();
-                    self.print_result_and_clear();
-                    self.cursor_newline_return();
-                    self.print_prompt();
-                },
-
-                Key::Char(ch) => {
-                    // write character, move cursor, add to buffer
-                    self.insert_into_query(ch);
-                    // self.refresh_input_prompt();
-                    //self.replace_at_query(ch);
-                    self.write_str(&ch.to_string());
-                },
-                _ => {},
+                }
+                ConsoleState::Quit => {
+                    return TuiResult::Quit;
+                }
+                _ => Some(self.state)
             }
-            self.stdout.flush().unwrap();
+            .unwrap_or(self.state);
         }
     }
 
-    fn render(&mut self) {
-        let (_,y) = self.stdout.cursor_pos().unwrap();
+    fn render(&mut self, stdout: &mut StdoutLock) {
+        let (_,y) = stdout.cursor_pos().unwrap();
         match self.state {
             ConsoleState::Start => {
                 write!(
-                    self.stdout,
+                    stdout,
                     "{}{}>\r\n{}",
                     termion::cursor::Goto(1, y),
                     termion::clear::CurrentLine,
@@ -237,7 +274,7 @@ impl <R: Iterator<Item=Result<Key, std::io::Error>>, W: Write> Tui<R, W> {
             }
             ConsoleState::Typing => {
                 write!(
-                    self.stdout,
+                    stdout,
                     "{}{}> {}\r\n{}{}",
                     termion::cursor::Goto(1, y),
                     termion::clear::CurrentLine,
@@ -249,7 +286,7 @@ impl <R: Iterator<Item=Result<Key, std::io::Error>>, W: Write> Tui<R, W> {
             }
             ConsoleState::Done => {
                 write!(
-                    self.stdout,
+                    stdout,
                     "\r\n{}{}",
                     termion::clear::CurrentLine,
                     termion::cursor::Goto(self.line.cursor() as u16 + 3, y)
@@ -257,22 +294,50 @@ impl <R: Iterator<Item=Result<Key, std::io::Error>>, W: Write> Tui<R, W> {
                 .unwrap();
             }
             ConsoleState::Quit => {
-                write!(self.stdout, "\r\n{}", termion::clear::AfterCursor).unwrap();
+                write!(stdout, "\r\n{}", termion::clear::AfterCursor).unwrap();
             }
             _ => {}
         }
-        self.stdout.flush().unwrap();
+        stdout.flush().unwrap();
+    }
+
+    fn print_results(&mut self, results: Vec<String>) -> TuiResult {
+        {
+            let stdout = io::stdout().into_raw_mode().unwrap();
+            stdout.suspend_raw_mode().unwrap();
+            let mut stdout = stdout.lock();
+            write!(&mut stdout, "\r\n").unwrap();
+
+            // print query followed by aq results
+            for item in results {
+                write!(&mut stdout, "{}", item.to_uppercase()).unwrap();
+
+                for res in &aq::nummificate(&item.to_uppercase()) {
+                    write!(stdout, " -> {}", res).unwrap();
+                }
+                write!(stdout, "\r\n");
+            }
+            stdout.flush().unwrap();
+        }
+        let stdout = io::stdout().into_raw_mode().unwrap();
+        stdout.activate_raw_mode().unwrap();
+        self.state = ConsoleState::Start;
+        TuiResult::Ready
     }
 
     fn print_result_and_clear(&mut self) {
         if self.query.is_empty() {
             return;
         }
-        write!(self.stdout, "{}", self.query).unwrap();
+
+        let stdout = io::stdout().into_raw_mode().unwrap();
+        let mut stdout = stdout.lock();
+
+        write!(stdout, "{}", self.query).unwrap();
         for res in &aq::nummificate(&self.query.to_uppercase()) {
-            write!(self.stdout, " -> {}", res).unwrap();
+            write!(stdout, " -> {}", res).unwrap();
         }
-        write!(self.stdout, "\n\r").unwrap();
+        write!(stdout, "\n\r").unwrap();
 
         if self.do_print_trinomes {
             self.print_trinomes();
@@ -298,154 +363,33 @@ impl <R: Iterator<Item=Result<Key, std::io::Error>>, W: Write> Tui<R, W> {
             }
         }
     }
-
-    fn cursor_left(&mut self) {
-        if self.curr_pos.x > self.prompt.len() + 1 {
-            self.curr_pos.x -= 1;
-        }
-        write!(self.stdout,
-            "{}",
-            termion::cursor::Goto(self.curr_pos.x as u16,
-                self.curr_pos.y as u16)
-        ).unwrap();
-    }
-
-    fn cursor_right(&mut self) {
-        if self.curr_pos.x < self.term_size.x {
-            self.curr_pos.x += 1;
-        }
-        write!(self.stdout,
-            "{}",
-            termion::cursor::Goto(self.curr_pos.x as u16,
-                self.curr_pos.y as u16)
-        ).unwrap();
-    }
-
-    fn delete_at_cursor(&mut self) {
-        if (self.curr_pos.x > self.prompt.len() + 1) {
-            self.query.remove(self.curr_pos.x - (self.prompt.len() + 1));
-        }
-        write!(self.stdout,
-            "{}",
-            termion::cursor::Goto(self.curr_pos.x as u16,
-                self.curr_pos.y as u16)
-        ).unwrap();
-    }
-
-    fn write_str(&mut self, s: &str) {
-        write!(self.stdout, "{}", s).unwrap();
-        for _ in 0..s.len() {
-            self.cursor_right();
-        }
-    }
-
-    fn insert_into_query(&mut self, ch: char) {
-        // account for prompt and space at begining of line
-        self.query.insert(self.curr_pos.x-1-self.prompt.len(), ch);
-    }
-
-    fn replace_at_query(&mut self, ch: char) {
-        if self.curr_pos.x > self.prompt.len() + 1 {
-            self.query.remove(self.curr_pos.x-1-self.prompt.len());
-        }
-        self.insert_into_query(ch);
-    }
-
-    fn cursor_newline_return(&mut self) {
-        self.curr_pos.y += 1;
-        self.curr_pos.x = 1;
-
-        write!(self.stdout,
-            "\n{}",
-            termion::cursor::Goto(self.curr_pos.x as u16,
-                self.curr_pos.y as u16)
-        ).unwrap();
-    }
-
-    fn refresh_input_prompt(&mut self) {
-        let old_x = self.curr_pos.x-1;
-        let old_y = self.curr_pos.y;
-        self.clear_line();
-        self.print_prompt();
-        let query_copy = String::from(self.query.as_str());
-        self.write_str(&query_copy);
-        write!(self.stdout,
-            "{}",
-            termion::cursor::Goto(old_x as u16,
-                old_y as u16)
-        ).unwrap();
-    }
-
-    fn clear_line(&mut self) {
-        write!(self.stdout, "{}", termion::clear::CurrentLine).unwrap();
-        self.curr_pos.x = 1;
-        write!(self.stdout,
-            "{}",
-            termion::cursor::Goto(self.curr_pos.x as u16,
-                self.curr_pos.y as u16)
-        ).unwrap();
-    }
-
-    fn print_prompt(&mut self) {
-        write!(self.stdout, "{}", self.prompt).unwrap();
-        self.stdout.flush().unwrap();
-        for _ in 0..self.prompt.len() {
-            self.cursor_right();
-        }
-    }
 }
 
-/*
-fn start_prompt(initial: &str) {
-    println!("{}\n{}", PROJECT_NAME, VERSION);
-    let mut buffer = match initial.is_empty() {
-        true => String::new(),
-        false => String::from(initial),
-    };
-
-    // init all streams
-    let stdin = stdin();
-    let mut stdout = stdout().into_raw_mode().unwrap();
-
-    let mut keys = stdin.keys();
-
-    loop {
-        print_and_clear(&mut buffer);
-        print!("> ");
-        stdout.flush().unwrap();
-
-        let c = keys.next().unwrap().unwrap();
-
-        match c {
-            Key::Char('q') => break,
-            Key::Esc => break,
-            Key::Left => println!("←"),
-            Key::Right => println!("→"),
-            Key::Up => println!("↑"),
-            Key::Down => println!("↓"),
-            Key::Backspace => println!("×"),
-            _ => {}
+fn typing(key: Key, line: &mut InputLine) -> Option<ConsoleState> {
+    match key {
+        Key::Esc | Key::Ctrl('c') => return Some(ConsoleState::Quit),
+        Key::Char(ch) => {
+            match ch {
+                '\n' => return Some(ConsoleState::Done),
+                // '\t' => return Some(ConsoleState::GetSuggestions)
+                _ => line.insert(ch),
+            }
         }
-        // stdout.flush().unwrap();
-
-        /*
-        stdin
-            .read_line(&mut buffer)
-            .expect("error: unable to read user input");
-        buffer = buffer.trim().to_uppercase();
-
-        if buffer.is_empty() || is_quit(&buffer) {
-            break;
-        } else if buffer == "^[[D" {
-            stdout.write_all(b"\x1B[1D");
+        Key::Left => line.cursor_left(),
+        Key::Right => line.cursor_right(),
+        // Key::Up => return Some(ConsoleState::HistoryUp),
+        // Key::Down => return Some(ConsoleState::HistoryDown),
+        Key::Backspace => {
+            if line.len() > 0 {
+                line.backspace();
+            }
         }
-
-        print!("{:?}", buffer);
-        print_and_clear(&buffer);
-        */
+        _ => {
+            // write!(stdout, "{:?}", k).unwrap();
+        }
     }
+    None
 }
-*/
 
 // removes non-alphanumerics and converts to uppercase
 fn sanitize_query(q: &str) -> String {
@@ -473,12 +417,4 @@ fn print_hex_trinomes(trinomes: &Vec<u8>) {
         print!("{} ", s.on_truecolor(trinomes[0]*SCALE, trinomes[1]*SCALE, trinomes[2]*SCALE));
     }
     print!{"\n"};
-}
-
-fn is_quit(q: &str) -> bool {
-    match q {
-        "q" => true,
-        "Q" => true,
-        _ => false,
-    }
 }
