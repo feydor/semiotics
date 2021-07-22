@@ -9,25 +9,27 @@ use std::convert::TryInto;
 use std::io::{self, Read, Write};
 use std::fmt::Display;
 use std::io::StdoutLock;
-// use std::io::BufRead;
+use std::collections::VecDeque;
 
 const PROJECT_NAME: &str = "aq";
 const VERSION: &str = "0.1.0";
 const ABOUT: &str = "deCrypter for Anglobal communications";
+const MAXHISTORY: i32 = 100;
 
 struct Tui<R> {
     state: ConsoleState,
     query: String,           // the current query
     line: InputLine,
-    curr_pos: Coord,         // the cursor's position
-    term_size: Coord,        // the terminal's size
     prompt: String,          // the default prompt
     do_print_trinomes: bool, // optional trinome printing
     stdin: R,                // standard input
 }
-struct Coord {
-    x: usize,
-    y: usize,
+
+#[derive(Debug)]
+pub struct History {
+    history: VecDeque<String>,
+    index: usize,
+    max: usize,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -49,7 +51,7 @@ pub enum TuiResult {
 
 #[derive(Default, Clone)]
 struct InputLine {
-    cursor: usize,
+    cursor: usize, // range: [0 (first char), line.len() (after last char)]
     line: String,
 }
 
@@ -88,7 +90,7 @@ impl InputLine {
                 .line
                 .chars()
                 .take(self.cursor) // chars up to cursor
-                .chain(std::iter::once(ch)) // plus character
+                .chain(std::iter::once(ch)) // plus new character
                 .chain(self.line.chars().skip(self.cursor)) // plus chars after cursor
                 .collect();
             self.cursor += 1;
@@ -99,15 +101,21 @@ impl InputLine {
         self.cursor = self.cursor.saturating_sub(1);
     }
 
+    // increment cursor up to line.len (one char after end)
     pub fn cursor_right(&mut self) {
-        self.cursor = self.line.len().min(self.cursor + 1);
+        self.cursor = self.line.len().min(self.cursor + 1); // smaller of two
     }
 
+    // delete char before cursor
     pub fn backspace(&mut self) {
-        if self.cursor == 0 { return; }
+        if self.cursor == 0 {
+            return;
+        }
+
         if self.cursor > self.line.len() {
             self.line.pop();
         } else {
+            // range: [0, cursor-1)..[cursor, line.len()]
             self.line = self
                 .line
                 .chars()
@@ -117,23 +125,77 @@ impl InputLine {
         }
         self.cursor -= 1;
     }
+
+    // delete char on cursor
+    pub fn delete_key(&mut self) {
+        // cursor after last char of line; do nothing
+        if self.cursor == self.line.len() {
+            return;
+        }
+
+        // cursor is off the rails; empty line
+        if self.cursor > self.line.len() {
+            self.line.pop();
+        } else {
+            // delete the char at cursor
+            // range: [0, cursor)..[cursor+1,line.len()]
+            self.line = self
+            .line
+            .chars()
+            .take(self.cursor)
+            .chain(self.line.chars().skip(self.cursor + 1))
+            .collect();
+        }
+    }
+}
+
+impl Default for History {
+    fn default() -> Self {
+        History {
+            history: VecDeque::new(),
+            index: 0,
+            max: MAXHISTORY,
+        }
+    }
+}
+
+impl History {
+    pub fn new(max: usize, history: VecDeque<String>) -> Self {
+        History {
+            index: history.len(),
+            history,
+            max,
+        }
+    }
+
+    pub fn save(&mut self, item: String) {
+        if self.history.len() == self.max {
+            self.history.pop_front();
+        }
+        self.history.push_back(item);
+        self.index = self.history.len();
+    }
+
+    // decrement history
+    pub fn up(&mut) {
+        self.index = self.index.saturating_sub(1);
+    }
+
+    // increment history up to histroy.len()
+    pub fn down(&mut) {
+        self.index = self.history.len().min(self.index + 1);
+    }
 }
 
 fn main() {
     let args = App::new(PROJECT_NAME)
         .version(VERSION)
         .about(ABOUT)
-        .setting(AppSettings::ArgRequiredElseHelp)
+        //.setting(AppSettings::ArgRequiredElseHelp)
         .arg(
             Arg::with_name("QUERY")
                 .help("an alphanumeric-encoded string")
                 .index(1),
-        )
-        .arg(
-            Arg::with_name("i")
-                .short("i")
-                .multiple(false)
-                .help("start interactive prompt"),
         )
         .arg(
             Arg::with_name("t")
@@ -156,30 +218,17 @@ fn main() {
     let stderr = io::stderr();
     let mut stderr = stderr.lock();
 
-    // go into raw mode
-    // let stdout = stdout.into_raw_mode().unwrap();
-
     init_and_loop(stdin, &mut stdout, args, query);
 }
 
 fn init_and_loop<R: Read>(stdin: R, stdout: &mut StdoutLock, args: clap::ArgMatches, init_query: String) {
-    // init Tui struct
-    let size = termion::terminal_size().unwrap();
     let mut stdout = stdout.into_raw_mode().unwrap();
-    let curr_pos = stdout.cursor_pos().unwrap();
 
+    // init Tui struct
     let  mut tui = Tui {
         query: init_query,
         state: ConsoleState::Start,
         line: InputLine::default(),
-        curr_pos: Coord {
-            x: curr_pos.0 as usize,
-            y: curr_pos.1 as usize,
-        },
-        term_size: Coord {
-            x: size.0 as usize,
-            y: size.1 as usize,
-        },
         prompt: "> ".to_owned(),
         do_print_trinomes: false,
         stdin: stdin.keys(),
@@ -189,9 +238,9 @@ fn init_and_loop<R: Read>(stdin: R, stdout: &mut StdoutLock, args: clap::ArgMatc
     if args.is_present("t") {
         tui.do_print_trinomes = true;
     }
-    // handle query
-    if !args.is_present("i") {
-        tui.print_result_and_clear();
+    // if query; process and return
+    if args.is_present("QUERY") {
+        tui.print_results(vec![format!("{}", tui.query)]);
         return;
     }
 
@@ -222,17 +271,14 @@ fn init_and_loop<R: Read>(stdin: R, stdout: &mut StdoutLock, args: clap::ArgMatc
 
 impl <R: Iterator<Item=Result<Key, std::io::Error>>> Tui<R> {
     fn run(&mut self) -> TuiResult {
-        //self.print_result_and_clear();
         // let mut buffer = String::new();
-
-        // self.print_prompt();
         self.state = ConsoleState::Start;
 
         // go into raw mode (destroy at end of run)
         let stdout = io::stdout().into_raw_mode().unwrap();
         let mut stdout = stdout.lock();
         loop {
-            self.render(&mut stdout);
+            self.render(&mut stdout); // mutates state
             self.state = match self.state {
                 ConsoleState::Start => Some(ConsoleState::Typing),
                 ConsoleState::Typing => {
@@ -325,26 +371,6 @@ impl <R: Iterator<Item=Result<Key, std::io::Error>>> Tui<R> {
         TuiResult::Ready
     }
 
-    fn print_result_and_clear(&mut self) {
-        if self.query.is_empty() {
-            return;
-        }
-
-        let stdout = io::stdout().into_raw_mode().unwrap();
-        let mut stdout = stdout.lock();
-
-        write!(stdout, "{}", self.query).unwrap();
-        for res in &aq::nummificate(&self.query.to_uppercase()) {
-            write!(stdout, " -> {}", res).unwrap();
-        }
-        write!(stdout, "\n\r").unwrap();
-
-        if self.do_print_trinomes {
-            self.print_trinomes();
-        }
-        self.query.clear();
-    }
-
     fn print_trinomes(&mut self) {
         let mut i = 0;
         let mut trinomes = Vec::<u8>::new();
@@ -365,6 +391,8 @@ impl <R: Iterator<Item=Result<Key, std::io::Error>>> Tui<R> {
     }
 }
 
+// handles immediate user input
+// moves cursor, returns control signals, adds/removes characters from the line buffer
 fn typing(key: Key, line: &mut InputLine) -> Option<ConsoleState> {
     match key {
         Key::Esc | Key::Ctrl('c') => return Some(ConsoleState::Quit),
@@ -382,6 +410,11 @@ fn typing(key: Key, line: &mut InputLine) -> Option<ConsoleState> {
         Key::Backspace => {
             if line.len() > 0 {
                 line.backspace();
+            }
+        }
+        Key::Delete => {
+            if line.len() > 0 {
+                line.delete_key();
             }
         }
         _ => {
