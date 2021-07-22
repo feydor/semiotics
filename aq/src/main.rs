@@ -1,195 +1,16 @@
 /* aq.rs - gematric and digital reduction functions for Anglossic Qabbala (AQ) */
-extern crate termion;
-use termion::event::Key;
-use termion::input::TermRead;
-use termion::{raw::IntoRawMode, cursor::DetectCursorPos};
+mod tui;
+
+use tui::Tui;
+use tui::TuiResult;
+
+use termion::raw::IntoRawMode;
 use clap::{App, Arg};
-use colored::*;
-use std::convert::TryInto;
-use std::io::{self, Read, Write};
-use std::io::StdoutLock;
-use std::collections::VecDeque;
+use std::io::{self, Write};
 
 const PROJECT_NAME: &str = "aq";
 const VERSION: &str = "0.1.0";
 const ABOUT: &str = "deCrypter for Anglobal communications";
-const MAXHISTORY: usize = 100;
-
-struct Tui<R> {
-    state: ConsoleState,
-    query: String,           // the current query
-    line: InputLine,
-    history: History,
-    prompt: String,          // the default prompt
-    do_print_trinomes: bool, // optional trinome printing
-    stdin: R,                // standard input
-}
-
-#[derive(Debug)]
-pub struct History {
-    history: VecDeque<String>,
-    index: usize,
-    max: usize,
-}
-
-#[derive(Debug, Copy, Clone)]
-enum ConsoleState {
-    Start,
-    Typing,
-    HistoryUp,
-    HistoryDown,
-    Done,
-    Quit
-}
-
-pub enum TuiResult {
-    // Suggestions(String),
-    Done(String),
-    Quit,
-    Ready,
-}
-
-#[derive(Default, Clone)]
-struct InputLine {
-    cursor: usize, // range: [0 (first char), line.len() (after last char)]
-    line: String,
-}
-
-impl InputLine {
-    pub fn from_string(line: String) -> Self {
-        InputLine {
-            cursor: line.len(),
-            line,
-        }
-    }
-
-    pub fn into_string(self) -> String {
-        self.line
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.line
-    }
-
-    pub fn len(&self) -> usize {
-        self.line.len()
-    }
-
-    pub fn cursor(&self) -> usize {
-        self.cursor
-    }
-
-     pub fn insert(&mut self, ch: char) {
-        // end of line insert (push)
-        if self.cursor > self.line.len() {
-            self.line.push(ch);
-            self.cursor = self.line.len() + 1;
-        } else {
-            // inbetween line insert
-            self.line = self
-                .line
-                .chars()
-                .take(self.cursor) // chars up to cursor
-                .chain(std::iter::once(ch)) // plus new character
-                .chain(self.line.chars().skip(self.cursor)) // plus chars after cursor
-                .collect();
-            self.cursor += 1;
-        }
-    }
-
-    pub fn cursor_left(&mut self) {
-        self.cursor = self.cursor.saturating_sub(1);
-    }
-
-    // increment cursor up to line.len (one char after end)
-    pub fn cursor_right(&mut self) {
-        self.cursor = self.line.len().min(self.cursor + 1); // smaller of two
-    }
-
-    // delete char before cursor
-    pub fn backspace(&mut self) {
-        if self.cursor == 0 {
-            return;
-        }
-
-        if self.cursor > self.line.len() {
-            self.line.pop();
-        } else {
-            // range: [0, cursor-1)..[cursor, line.len()]
-            self.line = self
-                .line
-                .chars()
-                .take(self.cursor - 1)
-                .chain(self.line.chars().skip(self.cursor))
-                .collect()
-        }
-        self.cursor -= 1;
-    }
-
-    // delete char on cursor
-    pub fn delete_key(&mut self) {
-        // cursor after last char of line; do nothing
-        if self.cursor == self.line.len() {
-            return;
-        }
-
-        // cursor is off the rails; empty line
-        if self.cursor > self.line.len() {
-            self.line.pop();
-        } else {
-            // delete the char at cursor
-            // range: [0, cursor)..[cursor+1,line.len()]
-            self.line = self
-            .line
-            .chars()
-            .take(self.cursor)
-            .chain(self.line.chars().skip(self.cursor + 1))
-            .collect();
-        }
-    }
-}
-
-impl Default for History {
-    fn default() -> Self {
-        History {
-            history: VecDeque::new(),
-            index: 0,
-            max: MAXHISTORY,
-        }
-    }
-}
-
-impl History {
-    pub fn new(max: usize, history: VecDeque<String>) -> Self {
-        History {
-            index: history.len(),
-            history,
-            max,
-        }
-    }
-
-    pub fn current(&self) -> Option<&str> {
-        self.history.get(self.index).map(|s| s.as_str())
-    }
-
-    pub fn save(&mut self, item: String) {
-        if self.history.len() == self.max {
-            self.history.pop_front();
-        }
-        self.history.push_back(item);
-        self.index = self.history.len();
-    }
-
-    // decrement history
-    pub fn up(&mut self) {
-        self.index = self.index.saturating_sub(1);
-    }
-
-    // increment history up to histroy.len()
-    pub fn down(&mut self) {
-        self.index = self.history.len().min(self.index + 1);
-    }
-}
 
 fn main() {
     let args = App::new(PROJECT_NAME)
@@ -217,34 +38,23 @@ fn main() {
     // Get and lock the stdios.
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
-    let stdin = io::stdin();
-    let stdin = stdin.lock();
 
-
-    init_and_loop(stdin, &mut stdout, args, query);
+    init_and_loop(&mut stdout, args, query);
 }
 
-fn init_and_loop<R: Read>(stdin: R, stdout: &mut StdoutLock, args: clap::ArgMatches, init_query: String) {
+fn init_and_loop(stdout: &mut io::StdoutLock, args: clap::ArgMatches, init_query: String) {
     let mut stdout = stdout.into_raw_mode().unwrap();
 
     // init Tui struct
-    let  mut tui = Tui {
-        query: init_query,
-        state: ConsoleState::Start,
-        line: InputLine::default(),
-        history: History::default(),
-        prompt: "> ".to_owned(),
-        do_print_trinomes: false,
-        stdin: stdin.keys(),
-    };
+    let mut tui = Tui::new(init_query);
 
     // set options
     if args.is_present("t") {
-        tui.do_print_trinomes = true;
+        tui.set_print_trinomes(true);
     }
     // if query; process and return
     if args.is_present("QUERY") {
-        tui.print_results(vec![format!("{}", tui.query)]);
+        tui.print_results(vec![format!("{}", tui.query())]);
         return;
     }
 
@@ -262,183 +72,9 @@ fn init_and_loop<R: Read>(stdin: R, stdout: &mut StdoutLock, args: clap::ArgMatc
                 }
                 */
                 tui.print_results(vec![format!("{}", query)])
-                /*
-                match run_query(&query) {
-                    Ok(results) => tui.print_results(results),
-                    Err(e) => tui.print_results(vec![format!("{}", e)]),
-                }
-                */
             }
         }
     }
-}
-
-impl <R: Iterator<Item=Result<Key, std::io::Error>>> Tui<R> {
-    fn run(&mut self) -> TuiResult {
-        // let mut buffer = String::new();
-        self.state = ConsoleState::Start;
-
-        // go into raw mode (destroy at end of run)
-        let stdout = io::stdout().into_raw_mode().unwrap();
-        let mut stdout = stdout.lock();
-        loop {
-            self.render(&mut stdout); // mutates state
-            self.state = match self.state {
-                ConsoleState::Start => Some(ConsoleState::Typing),
-                ConsoleState::Typing => {
-                    let key = self.stdin.next().unwrap().unwrap();
-                    typing(key, &mut self.line)
-                }
-                ConsoleState::HistoryUp => {
-                    self.history.up();
-                    self.line = InputLine::from_string(
-                        self.history.current().unwrap_or_default().to_string()
-                    );
-                    Some(ConsoleState::Typing)
-                }
-                ConsoleState::HistoryDown => {
-                    self.history.down();
-                    self.line = InputLine::from_string(
-                        self.history.current().unwrap_or_default().to_string()
-                    );
-                    Some(ConsoleState::Typing)
-                }
-                ConsoleState::Done => {
-                    let query = std::mem::take(&mut self.line).into_string();
-                    self.history.save(query.clone());
-
-                    // Put it in the right state for next time
-                    if query.is_empty() {
-                        return TuiResult::Quit;
-                    } else {
-                        return TuiResult::Done(query);
-                    }
-                }
-                ConsoleState::Quit => {
-                    return TuiResult::Quit;
-                }
-            }
-            .unwrap_or(self.state);
-        }
-    }
-
-    fn render(&mut self, stdout: &mut StdoutLock) {
-        let (_,y) = stdout.cursor_pos().unwrap();
-        match self.state {
-            ConsoleState::Start => {
-                write!(
-                    stdout,
-                    "{}{}>\r\n{}",
-                    termion::cursor::Goto(1, y),
-                    termion::clear::CurrentLine,
-                    termion::cursor::Goto(self.line.cursor() as u16 + 3, y - 1),
-                )
-                .unwrap();
-            }
-            ConsoleState::Typing => {
-                write!(
-                    stdout,
-                    "{}{}> {}\r\n{}{}",
-                    termion::cursor::Goto(1, y),
-                    termion::clear::CurrentLine,
-                    self.line.as_str(),
-                    termion::clear::CurrentLine,
-                    termion::cursor::Goto(self.line.cursor() as u16 + 3, y),
-                )
-                .unwrap();
-            }
-            ConsoleState::Done => {
-                write!(
-                    stdout,
-                    "\r\n{}{}",
-                    termion::clear::CurrentLine,
-                    termion::cursor::Goto(self.line.cursor() as u16 + 3, y)
-                )
-                .unwrap();
-            }
-            ConsoleState::Quit => {
-                write!(stdout, "\r\n{}", termion::clear::AfterCursor).unwrap();
-            }
-            _ => {}
-        }
-        stdout.flush().unwrap();
-    }
-
-    fn print_results(&mut self, results: Vec<String>) -> TuiResult {
-        {
-            let stdout = io::stdout().into_raw_mode().unwrap();
-            stdout.suspend_raw_mode().unwrap();
-            let mut stdout = stdout.lock();
-            write!(&mut stdout, "\r\n").unwrap();
-
-            // print query followed by aq results
-            for item in results {
-                write!(&mut stdout, "{}", item.to_uppercase()).unwrap();
-
-                for res in &aq::nummificate(&item.to_uppercase()) {
-                    write!(stdout, " -> {}", res).unwrap();
-                }
-                write!(stdout, "\r\n").unwrap();
-            }
-            stdout.flush().unwrap();
-        }
-        let stdout = io::stdout().into_raw_mode().unwrap();
-        stdout.activate_raw_mode().unwrap();
-        self.state = ConsoleState::Start;
-        TuiResult::Ready
-    }
-
-    fn print_trinomes(&mut self) {
-        let mut i = 0;
-        let mut trinomes = Vec::<u8>::new();
-        let mut title_printed = false;
-        for c in self.query.chars().filter(|&c|c.is_alphanumeric()).collect::<String>().chars() {
-            let trinome: u8 = aq::nummificate(&c.to_string())[0].try_into().unwrap();
-            trinomes.push(trinome);
-            i += 1;
-            if i % 3 == 0 {
-                if !title_printed {
-                    println!("{:->width$} THE IRON LAW OF SIX {:->width$}", "", "", width=40);
-                }
-                title_printed = true;
-                print_hex_trinomes(&trinomes);
-                trinomes.clear();
-            }
-        }
-    }
-}
-
-// handles immediate user input
-// moves cursor, returns control signals, adds/removes characters from the line buffer
-fn typing(key: Key, line: &mut InputLine) -> Option<ConsoleState> {
-    match key {
-        Key::Esc | Key::Ctrl('c') => return Some(ConsoleState::Quit),
-        Key::Char(ch) => {
-            match ch {
-                '\n' => return Some(ConsoleState::Done),
-                // '\t' => return Some(ConsoleState::GetSuggestions)
-                _ => line.insert(ch),
-            }
-        }
-        Key::Left => line.cursor_left(),
-        Key::Right => line.cursor_right(),
-        Key::Up => return Some(ConsoleState::HistoryUp),
-        Key::Down => return Some(ConsoleState::HistoryDown),
-        Key::Backspace => {
-            if line.len() > 0 {
-                line.backspace();
-            }
-        }
-        Key::Delete => {
-            if line.len() > 0 {
-                line.delete_key();
-            }
-        }
-        _ => {
-            // write!(stdout, "{:?}", k).unwrap();
-        }
-    }
-    None
 }
 
 // removes non-alphanumerics and converts to uppercase
@@ -450,21 +86,3 @@ fn sanitize_query(q: &str) -> String {
         .to_uppercase();
 }
 
-// prints the hex trinome in color, using itself
-fn print_hex_trinomes(trinomes: &Vec<u8>) {
-    if trinomes.len() < 3 {
-        panic!("trinomes must be hex.");
-    }
-
-    let mut s = String::from(" ");
-    for t in trinomes {
-        s.push_str(format!("{:#04X} ", t).as_str());
-    }
-
-    // println!("--Hex Trinomes--");
-    const SCALE: u8 = 4;
-    for _ in 0..6 {
-        print!("{} ", s.on_truecolor(trinomes[0]*SCALE, trinomes[1]*SCALE, trinomes[2]*SCALE));
-    }
-    print!{"\n"};
-}
