@@ -3,23 +3,23 @@ extern crate termion;
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::{raw::IntoRawMode, cursor::DetectCursorPos};
-use clap::{App, AppSettings, Arg};
+use clap::{App, Arg};
 use colored::*;
 use std::convert::TryInto;
 use std::io::{self, Read, Write};
-use std::fmt::Display;
 use std::io::StdoutLock;
 use std::collections::VecDeque;
 
 const PROJECT_NAME: &str = "aq";
 const VERSION: &str = "0.1.0";
 const ABOUT: &str = "deCrypter for Anglobal communications";
-const MAXHISTORY: i32 = 100;
+const MAXHISTORY: usize = 100;
 
 struct Tui<R> {
     state: ConsoleState,
     query: String,           // the current query
     line: InputLine,
+    history: History,
     prompt: String,          // the default prompt
     do_print_trinomes: bool, // optional trinome printing
     stdin: R,                // standard input
@@ -168,6 +168,10 @@ impl History {
         }
     }
 
+    pub fn current(&self) -> Option<&str> {
+        self.history.get(self.index).map(|s| s.as_str())
+    }
+
     pub fn save(&mut self, item: String) {
         if self.history.len() == self.max {
             self.history.pop_front();
@@ -177,12 +181,12 @@ impl History {
     }
 
     // decrement history
-    pub fn up(&mut) {
+    pub fn up(&mut self) {
         self.index = self.index.saturating_sub(1);
     }
 
     // increment history up to histroy.len()
-    pub fn down(&mut) {
+    pub fn down(&mut self) {
         self.index = self.history.len().min(self.index + 1);
     }
 }
@@ -215,8 +219,7 @@ fn main() {
     let mut stdout = stdout.lock();
     let stdin = io::stdin();
     let stdin = stdin.lock();
-    let stderr = io::stderr();
-    let mut stderr = stderr.lock();
+
 
     init_and_loop(stdin, &mut stdout, args, query);
 }
@@ -229,6 +232,7 @@ fn init_and_loop<R: Read>(stdin: R, stdout: &mut StdoutLock, args: clap::ArgMatc
         query: init_query,
         state: ConsoleState::Start,
         line: InputLine::default(),
+        history: History::default(),
         prompt: "> ".to_owned(),
         do_print_trinomes: false,
         stdin: stdin.keys(),
@@ -245,7 +249,7 @@ fn init_and_loop<R: Read>(stdin: R, stdout: &mut StdoutLock, args: clap::ArgMatc
     }
 
     // start prompt
-    write!(stdout, "{}\n\r{}\n\r", PROJECT_NAME, VERSION).unwrap();
+    write!(stdout, "{} {}\n\r", PROJECT_NAME, VERSION).unwrap();
     let mut state = TuiResult::Ready;
     loop {
         state = match state {
@@ -253,8 +257,8 @@ fn init_and_loop<R: Read>(stdin: R, stdout: &mut StdoutLock, args: clap::ArgMatc
             TuiResult::Quit => return,
             TuiResult::Done(query) => {
                 /*
-                if let Err(e) = self.save_history(cli.history()) {
-                    eprintln!("Could not save query history: {}", e);
+                if let Err(e) = self.write_history(cli.history()) {
+                    eprintln!("Could not write query history: {}", e);
                 }
                 */
                 tui.print_results(vec![format!("{}", query)])
@@ -285,11 +289,25 @@ impl <R: Iterator<Item=Result<Key, std::io::Error>>> Tui<R> {
                     let key = self.stdin.next().unwrap().unwrap();
                     typing(key, &mut self.line)
                 }
+                ConsoleState::HistoryUp => {
+                    self.history.up();
+                    self.line = InputLine::from_string(
+                        self.history.current().unwrap_or_default().to_string()
+                    );
+                    Some(ConsoleState::Typing)
+                }
+                ConsoleState::HistoryDown => {
+                    self.history.down();
+                    self.line = InputLine::from_string(
+                        self.history.current().unwrap_or_default().to_string()
+                    );
+                    Some(ConsoleState::Typing)
+                }
                 ConsoleState::Done => {
                     let query = std::mem::take(&mut self.line).into_string();
-                    //self.history.save(query.clone());
+                    self.history.save(query.clone());
+
                     // Put it in the right state for next time
-                    //self.state = ConsoleState::Typing;
                     if query.is_empty() {
                         return TuiResult::Quit;
                     } else {
@@ -299,7 +317,6 @@ impl <R: Iterator<Item=Result<Key, std::io::Error>>> Tui<R> {
                 ConsoleState::Quit => {
                     return TuiResult::Quit;
                 }
-                _ => Some(self.state)
             }
             .unwrap_or(self.state);
         }
@@ -361,7 +378,7 @@ impl <R: Iterator<Item=Result<Key, std::io::Error>>> Tui<R> {
                 for res in &aq::nummificate(&item.to_uppercase()) {
                     write!(stdout, " -> {}", res).unwrap();
                 }
-                write!(stdout, "\r\n");
+                write!(stdout, "\r\n").unwrap();
             }
             stdout.flush().unwrap();
         }
@@ -405,8 +422,8 @@ fn typing(key: Key, line: &mut InputLine) -> Option<ConsoleState> {
         }
         Key::Left => line.cursor_left(),
         Key::Right => line.cursor_right(),
-        // Key::Up => return Some(ConsoleState::HistoryUp),
-        // Key::Down => return Some(ConsoleState::HistoryDown),
+        Key::Up => return Some(ConsoleState::HistoryUp),
+        Key::Down => return Some(ConsoleState::HistoryDown),
         Key::Backspace => {
             if line.len() > 0 {
                 line.backspace();
