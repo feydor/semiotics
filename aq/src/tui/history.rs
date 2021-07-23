@@ -5,7 +5,7 @@ const MAXHISTORY: usize = 100;
 
 #[derive(Debug)]
 pub struct History {
-    history: VecDeque<String>,
+    history: VecDeque<(i32, String)>,
     index: usize,
     max: usize,
 }
@@ -21,24 +21,30 @@ impl Default for History {
 }
 
 impl History {
-    pub fn new(max: usize, history: VecDeque<String>) -> Self {
-        History {
-            index: history.len(),
-            history,
-            max,
-        }
+    pub fn current_query(&self) -> Option<&str> {
+        self.history.get(self.index).map(|entry| entry.1.as_str())
     }
 
-    pub fn current(&self) -> Option<&str> {
-        self.history.get(self.index).map(|s| s.as_str())
+    pub fn current_number(&self) -> Option<i32> {
+        self.history.get(self.index).map(|entry| entry.0)
     }
 
-    pub fn save(&mut self, item: String) {
+    pub fn save(&mut self, entry: (i32, String)) {
         if self.history.len() == self.max {
             self.history.pop_front();
         }
-        self.history.push_back(item);
+        self.history.push_back(entry);
         self.index = self.history.len();
+    }
+
+    // returns entries with a gematric number of n
+    pub fn matches(&self, n: i32) -> Option<Vec<String>> {
+        Some(self.history
+            .clone()
+            .into_iter()
+            .filter(|&(i, _)| i == n)
+            .map(|(_,s)| s)
+            .collect())
     }
 
     // decrement history

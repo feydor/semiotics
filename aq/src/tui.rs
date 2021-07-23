@@ -1,8 +1,10 @@
 //! tui.rs - tui (terminal user interface) container abstraction with state and result enums
 mod history;
 mod input_line;
+mod matches;
 use history::History;
 use input_line::InputLine;
+use matches::Matches;
 use std::convert::TryInto;
 use termion::event::Key;
 //use termion::color;
@@ -15,6 +17,7 @@ pub struct Tui {
     query: String,           // the current query
     line: InputLine,
     history: History,
+    matches: Matches,
     prompt: String,          // the default prompt
     do_print_trinomes: bool, // optional trinome printing
 }
@@ -42,6 +45,7 @@ impl Tui {
             state: ConsoleState::Start,
             line: InputLine::default(),
             history: History::default(),
+            matches: Matches::default(),
             prompt: "> ".to_owned(),
             do_print_trinomes: false,
         }
@@ -66,20 +70,29 @@ impl Tui {
                 ConsoleState::HistoryUp => {
                     self.history.up();
                     self.line = InputLine::from_string(
-                        self.history.current().unwrap_or_default().to_string()
+                        self.history.current_query().unwrap_or_default().to_string()
                     );
                     Some(ConsoleState::Typing)
                 }
                 ConsoleState::HistoryDown => {
                     self.history.down();
                     self.line = InputLine::from_string(
-                        self.history.current().unwrap_or_default().to_string()
+                        self.history.current_query().unwrap_or_default().to_string()
                     );
                     Some(ConsoleState::Typing)
                 }
                 ConsoleState::Done => {
                     let query = std::mem::take(&mut self.line).into_string();
-                    self.history.save(query.clone());
+                    let number = aq::nummificate(&query.to_uppercase())[0]; // take first result
+                    self.history.save((number, query.clone()));
+
+                    // search prior history for matches and save
+                    match self.history.matches(number) {
+                        Some(matches) => {
+                            self.matches.save(number, matches);
+                        },
+                        None => {}
+                    }
 
                     // Put it in the right state for next time
                     if query.is_empty() {
