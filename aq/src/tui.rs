@@ -1,10 +1,8 @@
 //! tui.rs - tui (terminal user interface) container abstraction with state and result enums
 mod history;
 mod input_line;
-mod matches;
 use history::History;
 use input_line::InputLine;
-use matches::Matches;
 use std::convert::TryInto;
 use termion::event::Key;
 //use termion::color;
@@ -17,7 +15,6 @@ pub struct Tui {
     query: String,           // the current query
     line: InputLine,
     history: History,
-    matches: Matches,
     prompt: String,          // the default prompt
     do_print_trinomes: bool, // optional trinome printing
 }
@@ -28,6 +25,7 @@ pub enum ConsoleState {
     Typing,
     HistoryUp,
     HistoryDown,
+    Matches,
     Done,
     Quit
 }
@@ -45,7 +43,6 @@ impl Tui {
             state: ConsoleState::Start,
             line: InputLine::default(),
             history: History::default(),
-            matches: Matches::default(),
             prompt: "> ".to_owned(),
             do_print_trinomes: false,
         }
@@ -81,18 +78,13 @@ impl Tui {
                     );
                     Some(ConsoleState::Typing)
                 }
+                ConsoleState::Matches => Some(ConsoleState::Start),
                 ConsoleState::Done => {
                     let query = std::mem::take(&mut self.line).into_string();
                     let number = aq::nummificate(&query.to_uppercase())[0]; // take first result
-                    self.history.save((number, query.clone()));
 
-                    // search prior history for matches and save
-                    match self.history.matches(number) {
-                        Some(matches) => {
-                            self.matches.save(number, matches);
-                        },
-                        None => {}
-                    }
+                    // save query in history
+                    self.history.save((number, query.clone()));
 
                     // Put it in the right state for next time
                     if query.is_empty() {
@@ -143,6 +135,33 @@ impl Tui {
                 )
                 .unwrap();
             }
+            ConsoleState::Matches => {
+                let matches = match self.history.matches() {
+                    None => { eprint!{"\r\n No Matches return"}; return; },
+                    Some(m) => m,
+                };
+
+                let mut new_line = String::new();
+                for (n, vec) in &matches {
+                    for query in vec.iter() {
+                        new_line += &(query.to_string() + &" = ".to_string());
+                    }
+                    new_line += &(n.to_string() + "\r\n");
+                }
+
+                self.line = InputLine::from_string(new_line);
+
+                write!(
+                    stdout,
+                    "{}{}> {}\r\n{}{}",
+                    termion::cursor::Goto(1, y),
+                    termion::clear::CurrentLine,
+                    self.line.as_str(),
+                    termion::clear::CurrentLine,
+                    termion::cursor::Goto(self.line.cursor() as u16 + 3, y)
+                )
+                .unwrap();
+            }
             ConsoleState::Quit => {
                 write!(stdout, "\r\n{}", termion::clear::AfterCursor).unwrap();
             }
@@ -151,6 +170,7 @@ impl Tui {
         stdout.flush().unwrap();
     }
 
+    // TODO: results should be a Vec of tuples Vec<(i32, String)> with aq precalculated
     pub fn print_results(&mut self, results: Vec<String>) -> TuiResult {
         {
             let stdout = io::stdout().into_raw_mode().unwrap();
@@ -211,6 +231,7 @@ fn typing(key: Key, line: &mut InputLine) -> Option<ConsoleState> {
         Key::Char(ch) => {
             match ch {
                 '\n' => return Some(ConsoleState::Done),
+                '#' => return Some(ConsoleState::Matches),
                 _ => line.insert(ch),
             }
         }

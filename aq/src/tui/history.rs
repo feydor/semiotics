@@ -1,5 +1,6 @@
 //! history.rs - query storage with movable index
 use std::collections::VecDeque;
+use std::collections::HashMap;
 
 const MAXHISTORY: usize = 100;
 
@@ -37,14 +38,55 @@ impl History {
         self.index = self.history.len();
     }
 
-    // returns entries with a gematric number of n
-    pub fn matches(&self, n: i32) -> Option<Vec<String>> {
-        Some(self.history
+    // returns all entries with matching aq numbers
+    // removes duplicates before returning
+    // returns:
+    // hashmap {
+    //      249: ["outsideness", "xenosytem"],
+    //        n: ["a word", "another", "matches here", ...]
+    // }
+    pub fn matches(&self) -> Option<HashMap<i32, Vec<String>>> {
+        let mut matches: HashMap<i32, Vec<String>> = HashMap::new();
+
+        // populate hashmap, one key : many values
+        for (aq, query) in &self.history {
+            matches.entry(*aq)
+                .or_default()
+                .push(query.to_string());
+        }
+
+        // remove duplicates
+        for (_, vec) in matches.iter_mut() {
+            vec.sort();
+            vec.dedup();
+        }
+
+        // delete entries without matches
+        matches = matches.into_iter()
+                         .filter(|(_, vec)| vec.len() > 1)
+                         .collect();
+
+        if matches.is_empty() {
+            return None;
+        }
+
+        return Some(matches);
+
+/*
+        let mut res = self.history
             .clone()
             .into_iter()
-            .filter(|&(i, _)| i == n)
-            .map(|(_,s)| s)
-            .collect())
+            .filter(|&(i, _)| i == n)   // tuples with matching index
+            .map(|(_,s)| s)             // strip query
+            .filter(|s| *s != *query)   // strip duplicates
+            .collect::<Vec<String>>();
+        res.push(query.to_string());   // adds query to returned matches
+        if res.len() < 2 {
+            None
+        } else {
+            Some(res)
+        }
+        */
     }
 
     // decrement history
