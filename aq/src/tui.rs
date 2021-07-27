@@ -9,6 +9,7 @@ use termion::event::Key;
 use termion::{raw::IntoRawMode, cursor::DetectCursorPos};
 use termion::input::TermRead;
 use std::io::{self, Write};
+use std::collections::HashMap;
 
 pub struct Tui {
     state: ConsoleState,
@@ -78,7 +79,25 @@ impl Tui {
                     );
                     Some(ConsoleState::Typing)
                 }
-                ConsoleState::Matches => Some(ConsoleState::Start),
+                ConsoleState::Matches => {
+                    let matches = match self.history.matches() {
+                        None => HashMap::new(),
+                        Some(m) => m,
+                    };
+
+                    if !matches.is_empty() {
+                        let mut new_line = String::new();
+                        for (n, vec) in &matches {
+                            for query in vec.iter() {
+                                new_line += &(query.to_string() + &" = ".to_string());
+                            }
+                            new_line += &(n.to_string() + "\r\n");
+                        }
+                        self.line = InputLine::from_string(new_line);
+                    }
+
+                    Some(ConsoleState::Typing)
+                }
                 ConsoleState::Done => {
                     let query = std::mem::take(&mut self.line).into_string();
                     let number = aq::nummificate(&query.to_uppercase())[0]; // take first result
@@ -88,7 +107,7 @@ impl Tui {
 
                     // Put it in the right state for next time
                     if query.is_empty() {
-                        return TuiResult::Quit;
+                        return TuiResult::Done("?".to_string());
                     } else {
                         return TuiResult::Done(query);
                     }
@@ -130,33 +149,6 @@ impl Tui {
                 write!(
                     stdout,
                     "\r\n{}{}",
-                    termion::clear::CurrentLine,
-                    termion::cursor::Goto(self.line.cursor() as u16 + 3, y)
-                )
-                .unwrap();
-            }
-            ConsoleState::Matches => {
-                let matches = match self.history.matches() {
-                    None => { eprint!{"\r\n No Matches return"}; return; },
-                    Some(m) => m,
-                };
-
-                let mut new_line = String::new();
-                for (n, vec) in &matches {
-                    for query in vec.iter() {
-                        new_line += &(query.to_string() + &" = ".to_string());
-                    }
-                    new_line += &(n.to_string() + "\r\n");
-                }
-
-                self.line = InputLine::from_string(new_line);
-
-                write!(
-                    stdout,
-                    "{}{}> {}\r\n{}{}",
-                    termion::cursor::Goto(1, y),
-                    termion::clear::CurrentLine,
-                    self.line.as_str(),
                     termion::clear::CurrentLine,
                     termion::cursor::Goto(self.line.cursor() as u16 + 3, y)
                 )
