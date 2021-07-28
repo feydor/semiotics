@@ -38,7 +38,7 @@ fn print_tetrads(tetrads: &Vec<u32>) {
     // println!(" r Σ");
     for n in tetrads {
         // first print (base-n) spaces
-        print!("{:>2} ", *n);
+        // print!("{:>2} ", *n);
         for _ in *n..=base {
             print!("·");
         }
