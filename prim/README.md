@@ -1,4 +1,5 @@
 # prim
+primitive method, accumulation, tallying  
 (₱4 == four == PD-0) -> inf
 ```
 USAGE:
