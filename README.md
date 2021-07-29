@@ -1,6 +1,6 @@
 # semiotics
-"Archetypes are sad limitations of the species, while numbers are an eternal hypercosmic delight. " - vauung
-"Gnon built the universe on Number" - Pseudo-Pythagoras
+"*... [N]umbers are an eternal hypercosmic delight.* " - vauung  
+"*[G]non built the universe on Number*" - Pseudo-Pythagoras
 
 ## build
 All programs in this repository can be built using cargo:
