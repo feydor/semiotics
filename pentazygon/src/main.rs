@@ -40,11 +40,33 @@ fn main() {
     let days_since = since_the_epoch.as_secs() / SECONDS_IN_DAY;
     let day_number = days_since % 365 - leaps_since; // days since beginning of year
     curr.day = day_number % DAYS_IN_MONTH as u64;
-    println!("DMY: {} {} {}", curr.day, curr.month, curr.year);
+    println!("D/M/Y: {:0>2} / {:0>2} / {}", curr.day, curr.month, curr.year);
 
     format_date(&curr);
 }
 
 fn format_date(curr: &Curr) {
-    println!("MDY");
+    print!("The {}", curr.day);
+    if curr.day % 10 == 1 {
+        print!("st");
+    } else if curr.day % 10 == 2 {
+        print!("nd");
+    } else if curr.day % 10 == 3 {
+        print!("rd");
+    } else {
+        print!("th");
+    }
+    print!(" day of ");
+
+    match curr.month {
+        1 => print!("Uttunul"),
+        2 => print!("Murrumur"),
+        3 => print!("Oddubb"),
+        4 => print!("Djynxx"),
+        5 => print!("Kattak"),
+        _ => {}
+    }
+    print!(" in the year ");
+    print!("{}", curr.year);
+    print!(" of our lord Gnon.\n")
 }
