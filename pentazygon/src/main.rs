@@ -3,6 +3,9 @@
 // MOK(DU) 1, 2, 3, 8, 7, 5 (0, 3, 6, 9)
 // psz: 5 * 72(=9) = 365
 use std::time::{SystemTime, UNIX_EPOCH};
+#[macro_use] extern crate prettytable;
+use prettytable::{format, Cell, Row, Table, Attr, color};
+use std::convert::TryInto;
 
 const DAYS_IN_YEAR: u32 = 365;
 const MONTHS_IN_YEAR: u32 = 5;
@@ -42,10 +45,11 @@ fn main() {
     curr.day = day_number % DAYS_IN_MONTH as u64;
     println!("D/M/Y: {:0>2} / {:0>2} / {}", curr.day, curr.month, curr.year);
 
-    format_date(&curr);
+    date_string(&curr);
+    date_table(&curr);
 }
 
-fn format_date(curr: &Curr) {
+fn date_string(curr: &Curr) {
     print!("The {}", curr.day);
     if curr.day % 10 == 1 {
         print!("st");
@@ -66,7 +70,54 @@ fn format_date(curr: &Curr) {
         5 => print!("Kattak"),
         _ => {}
     }
+
     print!(" in the year ");
     print!("{}", curr.year);
-    print!(" of our lord Gnon.\n")
+    print!(" of our lord Gnon.\n\n")
+}
+
+fn date_table(curr: &Curr) {
+    let mut table = Table::new();
+    table.set_format(*format::consts::FORMAT_CLEAN);
+
+    let mut title_str = match curr.month {
+        1 => "Uttunul",
+        2 => "Murrumur",
+        3 => "Oddubb",
+        4 => "Djynxx",
+        5 => "Kattak",
+        _ => ""
+    }
+    .to_string();
+    title_str += &(" ".to_string() + &curr.year.to_string());
+    println!("{:^34}", title_str);
+
+    let mut week = Vec::<String>::new();
+    for i in 1..=DAYS_IN_MONTH {
+        week.push(i.to_string());
+        if i % 9 == 0 && i != 0 {
+            push_week_to_table(&week, curr.day, &mut table);
+            week.clear();
+        }
+    }
+    if !week.is_empty() {
+        push_week_to_table(&week, curr.day, &mut table);
+        week.clear();
+    }
+    table.printstd();
+
+}
+
+fn push_week_to_table(week: &Vec<String>, curr_day: u64, table: &mut Table) {
+    let mut cells = Vec::<Cell>::new();
+    for s in week {
+        if s.parse::<u64>().unwrap() == curr_day {
+            cells.push(Cell::new(s)
+                .with_style(Attr::BackgroundColor(color::WHITE))
+                .with_style(Attr::ForegroundColor(color::BLACK)));
+        } else {
+            cells.push(Cell::new(s));
+        }
+    }
+    table.add_row(Row::new(cells));
 }
