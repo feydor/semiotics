@@ -14,6 +14,7 @@ const DAYS_IN_MONTH: u32 = 73;
 const SECONDS_IN_YEAR: u64 = 60 * 60 * 24 * 73 * 5;
 const SECONDS_IN_MONTH: u64 = SECONDS_IN_YEAR / 5;
 const SECONDS_IN_DAY: u64 = 60 * 60 * 24;
+const INCIPIT_AOK: u64 = 2000;
 
 struct Curr {
     day: u64,
@@ -43,7 +44,7 @@ fn main() {
     let days_since = since_the_epoch.as_secs() / SECONDS_IN_DAY;
     let day_number = days_since % 365 - leaps_since; // days since beginning of year
     curr.day = day_number % DAYS_IN_MONTH as u64;
-    println!("D/M/Y: {:0>2} / {:0>2} / {}", curr.day, curr.month, curr.year);
+    println!("D/M/Y: {:0>2} / {:0>2} / {}", curr.day, curr.month, curr.year - INCIPIT_AOK);
 
     date_string(&curr);
     date_table(&curr);
@@ -67,29 +68,32 @@ fn date_string(curr: &Curr) {
         2 => print!("Murrumur"),
         3 => print!("Oddubb"),
         4 => print!("Djynxx"),
-        5 => print!("Kattak"),
+        5 => print!("Khattak"),
         _ => {}
     }
 
     print!(" in the year ");
-    print!("{}", curr.year);
-    print!(" of our lord Gnon.\n\n")
+    print!("{}", curr.year - INCIPIT_AOK);
+    print!(" AOK.\n\n")
 }
 
 fn date_table(curr: &Curr) {
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_CLEAN);
+    table.add_row(row!["L", "Du", "Do", "Ix", "Ig", "Id", "K", "Sg", "Sd"]);
+    // 00-Lurgo, 01-Duoddod, 02-Doogu, 03-Ixix, 04-Ixigool, 05-Ixidod, 06-Krako, 07-Sukugool
+    // 08-Skoodu, 09-Skarkix
 
     let mut title_str = match curr.month {
         1 => "Uttunul",
         2 => "Murrumur",
         3 => "Oddubb",
         4 => "Djynxx",
-        5 => "Kattak",
+        5 => "Khattak",
         _ => ""
     }
     .to_string();
-    title_str += &(" ".to_string() + &curr.year.to_string());
+    title_str += &(" ".to_string() + &(curr.year - INCIPIT_AOK).to_string());
     println!("{:^34}", title_str);
 
     let mut week = Vec::<String>::new();
@@ -102,10 +106,8 @@ fn date_table(curr: &Curr) {
     }
     if !week.is_empty() {
         push_week_to_table(&week, curr.day, &mut table);
-        week.clear();
     }
     table.printstd();
-
 }
 
 fn push_week_to_table(week: &Vec<String>, curr_day: u64, table: &mut Table) {
