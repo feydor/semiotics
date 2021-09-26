@@ -1,6 +1,5 @@
 # semiotics
 "*...[N]umbers are an eternal hypercosmic delight.* " - vauung  
-"*[G]non built the universe on Number*" - Pseudo-Pythagoras
 "*...[Y]ou don't ask whether it's meaningful, but only if it's demonstrable*" - On Barrow's Angels
 
 ## build
