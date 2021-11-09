@@ -5,12 +5,12 @@ authors = ["Victor Reyes <vreyes85739@outlook.com>"]
 edition = "2018"
 
 [lib]
-name = "vivisix"
+name = "vivi"
 path = "src/lib.rs"
 
 [[bin]]
 name = "vivi"
-path = "src/main.rs"
+path = "src/bin/vivi.rs"
 
 [dependencies]
 text_io = "0.1.9"

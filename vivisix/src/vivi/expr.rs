@@ -5,15 +5,9 @@ pub struct Expr {
     args: Vec<Expr>,
 }
 
-enum Op {
+pub enum Op {
     Plus,
     Minus,
     Star,
     Slash
-}
-
-impl Expr {
-    fn make() -> Self {
-        Self{ op: Op::Plus, args: [].to_vec() }
-    }
 }

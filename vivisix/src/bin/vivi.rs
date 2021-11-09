@@ -1,6 +1,6 @@
 // vivisix - symbolic mathematical computator
-extern crate vivisix;
-use crate::vivi::*;
+extern crate vivi;
+use crate::vivi::vivi::vivi::*;
 
 use std::env;
 use std::process;
@@ -28,38 +28,41 @@ fn main() {
     println!("flags: {:?}", config.flags);
 
     if config.none {
-        repl(config);
+        repl(&config);
     }
 
-    let result = run(config).unwrap_or_else(|err| {
+    let mut evaluator = Vivi::new(&config.query);
+
+    let result = run(config, &mut evaluator).unwrap_or_else(|err| {
         println!("Problem evaluating query: {}", err);
         process::exit(1);
     });
-    printer::print_expr(&result);
+    evaluator.display();
 }
 
-fn repl(config: Config) {
+fn repl(config: &Config) {
     println!("{} {}", PROJECT_NAME, VERSION);
     let mut line = String::new();
+    let mut evaluator = Vivi::new(&"1 + 1".to_string());
     loop {
         print!("> ");
         line = read!("{}\n");
         if line.len() == 0 {
             process::exit(0);
         }
-        let expr = vivi::eval(&line);
-        printer::print_expr(&expr);
+        evaluator.expr(&line);
+        evaluator.display();
     }
 }
 
-fn run(config: Config) -> Result<(), &str> {
+fn run(config: Config, evaluator: &mut Vivi) -> Result<(), &str> {
     if config.flags.len() == 0 {
-        return Ok(vivi::eval(&config.query));
+        return Ok(evaluator.eval()); // x + 2x -> x ADD 2 MUL x
     }
 
     for flag in config.flags {
         return match flag.as_str() {
-            "-d" => Ok(vivi::deriv(&config.query)),
+            "-d" => Ok(evaluator.derive()),
             _ => Err("flag not found"),
         }
     }
@@ -68,7 +71,7 @@ fn run(config: Config) -> Result<(), &str> {
 
 impl Config {
     fn new(args: &Vec<String>) -> Result<Self, &str> {
-        if args.len() < 1 {
+        if args.len() < 2 {
             return Ok(Config { query: "".to_string(), flags: [].to_vec(), none: true })
         }
 
