@@ -1,6 +1,6 @@
 // use crate::vivi::expr;
 use std::collections::HashMap;
-// use std::error::Error;
+use std::process;
 
 trait Expr {
     fn print(&self);
@@ -50,7 +50,6 @@ impl Expr for BinaryExpr {
         self.lhs.print();
         print!("{} ", self.operator);
         self.rhs.print();
-        print!("\n");
     }
 }
 
@@ -108,8 +107,9 @@ impl Vivi {
 
     pub fn display(&self) {
         for expr in &self.ast {
-            expr.print();
+            expr.print(); 
         }
+        print!("\n");
     }
 
     fn at_end(&self) -> bool {
@@ -136,7 +136,8 @@ impl Vivi {
             self.advance();
             return Box::new(LiteralExpr::new(Some(curr_tok.parse::<f32>().unwrap()), None).unwrap());
         } else {
-            return Box::new(LiteralExpr::new(None, None).unwrap());
+            println!("Unknown token: {}", &self.peek());
+            process::exit(1);
         }
     }
 

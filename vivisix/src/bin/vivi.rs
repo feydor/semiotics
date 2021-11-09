@@ -4,7 +4,6 @@ use crate::vivi::vivi::vivi::*;
 
 use std::env;
 use std::process;
-use std::error::Error;
 use text_io::read;
 
 #[derive(Debug)]
@@ -24,11 +23,12 @@ fn main() {
         process::exit(1);
     });
 
+    println!("args: {}", args.len());
     println!("query: {}", config.query);
     println!("flags: {:?}", config.flags);
 
     if config.none {
-        repl(&config);
+        repl();
     }
 
     let mut evaluator = Vivi::new(&config.query);
@@ -40,17 +40,18 @@ fn main() {
     evaluator.display();
 }
 
-fn repl(config: &Config) {
+fn repl() {
     println!("{} {}", PROJECT_NAME, VERSION);
-    let mut line = String::new();
-    let mut evaluator = Vivi::new(&"1 + 1".to_string());
+    let mut evaluator = Vivi::new(&"".to_string());
+    
     loop {
         print!("> ");
-        line = read!("{}\n");
+        let line: String = read!("{}\n");
         if line.len() == 0 {
             process::exit(0);
         }
-        evaluator.expr(&line);
+                            
+        evaluator.expr(&sanitize_query(&line));
         evaluator.display();
     }
 }
@@ -71,13 +72,22 @@ fn run(config: Config, evaluator: &mut Vivi) -> Result<(), &str> {
 
 impl Config {
     fn new(args: &Vec<String>) -> Result<Self, &str> {
-        if args.len() < 2 {
+        if args.len() == 1 {
             return Ok(Config { query: "".to_string(), flags: [].to_vec(), none: true })
+        } else if args.len() == 2 {
+            return Ok(Config { query: sanitize_query(&args[1]), flags: [].to_vec(), none: false })
         }
 
-        let query = args[1].clone();
+        let query = sanitize_query(&args[1]);
         let flags = args[2..].iter().map(|s| s.to_string()).collect();
 
         Ok(Config { query, flags, none: false })
     }
+}
+
+fn sanitize_query(query: &str) -> String {
+    query.chars()
+         .filter(|c| c.is_alphanumeric() || c.is_ascii_punctuation() || c.is_whitespace())
+         .map(|c| c.to_string().to_lowercase())
+         .collect::<String>()
 }
