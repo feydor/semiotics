@@ -33,7 +33,7 @@ fn main() {
 
     let mut evaluator = Vivi::new(&config.query);
 
-    let result = run(config, &mut evaluator).unwrap_or_else(|err| {
+    run(config, &mut evaluator).unwrap_or_else(|err| {
         println!("Problem evaluating query: {}", err);
         process::exit(1);
     });
@@ -43,7 +43,7 @@ fn main() {
 fn repl() {
     println!("{} {}", PROJECT_NAME, VERSION);
     let mut evaluator = Vivi::new(&"".to_string());
-    
+
     loop {
         print!("> ");
         let line: String = read!("{}\n");

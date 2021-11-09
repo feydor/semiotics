@@ -4,6 +4,7 @@ use std::process;
 
 trait Expr {
     fn print(&self);
+    fn eval(&self) -> Box<LiteralExpr>;
 }
 
 struct BinaryExpr {
@@ -12,6 +13,7 @@ struct BinaryExpr {
     operator: String,
 }
 
+#[derive(Clone)]
 struct LiteralExpr {
     num: Option<f32>,
     var: Option<String>,
@@ -32,10 +34,19 @@ impl LiteralExpr {
 impl Expr for LiteralExpr {
     fn print(&self) {
         match self {
-            LiteralExpr {num: Some(n), var: None} => print!("{} ", self.num.as_ref().unwrap()),
-            LiteralExpr {num: None, var: Some(v)} => print!("{} ", self.var.as_ref().unwrap()),
-            _ => println!("")
+            LiteralExpr {num: Some(_n), var: None} => print!("{} ", self.num.as_ref().unwrap()),
+            LiteralExpr {num: None, var: Some(_v)} => print!("{} ", self.var.as_ref().unwrap()),
+            _ => print_error_and_exit("Not a valid literal")
         }
+    }
+
+    fn eval(&self) -> Box<LiteralExpr> {
+        Box::new(self.clone())
+        /*match self {
+            LiteralExpr {num: Some(n), var: None} => Box::new(self),
+            LiteralExpr {num: None, var: Some(v)} => Box::new(self),
+            _ => print_error_and_exit("Not a valid literal")
+        }*/
     }
 }
 
@@ -51,6 +62,20 @@ impl Expr for BinaryExpr {
         print!("{} ", self.operator);
         self.rhs.print();
     }
+
+    fn eval(&self) -> Box<LiteralExpr> {
+        let lhs = self.lhs.eval();
+        let rhs = self.rhs.eval();
+
+
+        match self.operator.as_str() {
+            "+" => Box::new(LiteralExpr::new(Some(lhs.num.unwrap() + rhs.num.unwrap()), None).unwrap()),
+            "*" => Box::new(LiteralExpr::new(Some(lhs.num.unwrap() * rhs.num.unwrap()), None).unwrap()),
+            "-" => Box::new(LiteralExpr::new(Some(lhs.num.unwrap() - rhs.num.unwrap()), None).unwrap()),
+            "/" => Box::new(LiteralExpr::new(Some(lhs.num.unwrap() / rhs.num.unwrap()), None).unwrap()),
+            _ => Box::new(LiteralExpr::new(None, None).unwrap()),
+        }
+    }
 }
 
 pub struct Vivi {
@@ -60,8 +85,6 @@ pub struct Vivi {
     // operators: HashMap<String, Box<dyn Fn(&Vec<f32>) -> f32>>,
     operators: HashMap<String, i32>,
 }
-
-struct Operator {}
 
 impl Vivi {
     /* Add table of operators here */
@@ -101,8 +124,13 @@ impl Vivi {
         self.eval();
     }
 
-    pub fn derive(&self) {
-        ()
+    pub fn derive(&mut self) {
+        self.eval();
+        for expr in &self.ast {
+            let e = *expr.eval();
+            e.print();
+            print!("\n");
+        }
     }
 
     pub fn display(&self) {
@@ -136,7 +164,7 @@ impl Vivi {
             self.advance();
             return Box::new(LiteralExpr::new(Some(curr_tok.parse::<f32>().unwrap()), None).unwrap());
         } else {
-            println!("Unknown token: {}", &self.peek());
+            print_error_and_exit(&self.peek());
             process::exit(1);
         }
     }
@@ -231,4 +259,9 @@ fn is_variable(tok: &String) -> bool {
 
 fn is_number(tok: &String) -> bool {
     tok.chars().all(|c| c.is_digit(10))
+}
+
+fn print_error_and_exit(err: &str) {
+    println!("Unknown token: {}", err);
+    process::exit(1);
 }
