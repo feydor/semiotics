@@ -247,6 +247,36 @@ pub struct Vivi {
 }
 
 impl Vivi {
+    pub fn make_sum(&self, a1: &Vec<String>, a2: &Vec<String>) -> Vec<String> {
+        if is_number(a1) && is_number(a2) {
+            let sum = parse_number(a1) + parse_number(a2);
+            return vec![sum.to_string()]
+        } else if is_number_and_equals(a1, 0.) {
+            return a2.to_vec();
+        } else if is_number_and_equals(a2, 0.) {
+            return a1.to_vec();
+        } else {
+            let temp:Vec<String> = concat_vectors(a1, &vec!["+".to_string()]);
+            return concat_vectors(&temp, a2);
+        }
+    }
+    
+    pub fn make_product(&self, m1: &Vec<String>, m2: &Vec<String>) -> Vec<String> {
+        if is_number(m1) && is_number(m2) {
+            let product = parse_number(m1) * parse_number(m2);
+            return vec![product.to_string()];
+        } else if is_number_and_equals(m1, 1.) {
+            return m2.to_vec();
+        } else if is_number_and_equals(m2, 1.) {
+            return m1.to_vec();
+        } else if is_number_and_equals(m1, 0.) || is_number_and_equals(m2, 0.) {
+            return vec!["0".to_string()];
+        } else {
+            let temp = concat_vectors(m1, &vec!["*".to_string()]);
+            return concat_vectors(&temp, m2);
+        }
+    }
+    
     /* Add table of operators here */
     pub fn new(query: &String) -> Self {
         let mut operators = HashMap::new();
@@ -291,6 +321,7 @@ impl Vivi {
         }
     }
 
+    /*
     pub fn differentiate(&mut self, var: &str) {
         self.eval();
         let v = self.ast.remove(0);
@@ -298,6 +329,7 @@ impl Vivi {
         let derived = self.deriv(v, &var);
         derived.print();
     }
+    */
 
     pub fn display(&self) {
         for expr in &self.ast {
@@ -305,6 +337,8 @@ impl Vivi {
         }
         print!("\n");
     }
+        
+/*
 
     fn deriv(&self, expr: Rc<dyn Expr>, var: &str) -> Rc<dyn Expr> {
         if expr.is_constant(&var) {
@@ -327,7 +361,7 @@ impl Vivi {
             panic!("Vivi::deriv: Unkown differentation rule.");
         }
     }
-/*
+
     (define (make-sum a1 a2)
   (cond [(and (number? a1) (number? a2))
          (+ a1 a2)]
@@ -335,7 +369,7 @@ impl Vivi {
         [(=number? a2 0) a1]
         [else (list '+ a1 a2)]))
 */
-
+    /*
     fn make_sum(&self, lhs: Rc<dyn Expr>, rhs: Rc<dyn Expr>, var: &str) -> Rc<dyn Expr> {
         if lhs.is_constant(&var) && rhs.is_constant(&var) {
             return Rc::new(LiteralExpr::new_num(lhs.number() + rhs.number()));
@@ -362,6 +396,7 @@ impl Vivi {
         }
         Rc::new(BinaryExpr::new(Operator::STAR, lhs, rhs))
     }
+    */
 
     fn at_end(&self) -> bool {
         self.curr == self.tokens.len() as u32
@@ -383,7 +418,7 @@ impl Vivi {
         if is_variable(&curr_tok) {
             self.advance();
             return Rc::new(LiteralExpr::new_var(&curr_tok));
-        } else if is_number(&curr_tok) {
+        } else if token_is_number(&curr_tok) {
             self.advance();
             return Rc::new(LiteralExpr::new_num(curr_tok.parse::<f32>().unwrap()));
         } else {
@@ -420,11 +455,35 @@ fn is_variable(tok: &String) -> bool {
     tok.chars().all(|c| c.is_alphabetic())
 }
 
-fn is_number(tok: &String) -> bool {
+fn token_is_number(tok: &String) -> bool {
     tok.chars().all(|c| c.is_digit(10))
 }
 
 fn print_error_and_exit(err: &str) {
     println!("Unknown token: {}", err);
     process::exit(1);
+}
+
+
+
+
+fn concat_vectors<T: Clone>(v1: &Vec<T>, v2: &Vec<T>) -> Vec<T> {
+    v1.iter().cloned().chain(v2.iter().cloned()).collect()
+}
+
+fn is_number(n: &Vec<String>) -> bool {
+    n.len() == 1 as usize && n[0].chars().all(|c| c.is_digit(10))
+}
+
+fn is_number_and_equals(n: &Vec<String>, test: f32) -> bool {
+    is_number(n) && n[0].parse::<f32>().unwrap() == test
+}
+
+fn parse_number(n: &Vec<String>) -> f32 {
+    n[0].parse().unwrap()
+}
+impl Vivi {
+
+
+
 }

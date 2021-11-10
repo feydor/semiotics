@@ -56,14 +56,22 @@ fn repl() {
     }
 }
 
+macro_rules! vec_of_strings {
+    ($($x:expr),*) => (vec![$($x.to_string()),*]);
+}
+
 fn run(config: Config, evaluator: &mut Vivi) -> Result<(), &str> {
     if config.flags.len() == 0 {
-        return Ok(evaluator.eval()); // x + 2x -> x ADD 2 MUL x
+        // return Ok(evaluator.eval()); // x + 2x -> x ADD 2 MUL x
+        let e1 = vec_of_strings!["2", "+", "2"];
+        let e2 = vec_of_strings!["5", "+", "5"];
+        let sum = evaluator.make_sum(&e1, &e2);
+        println!("{:?}", sum);
     }
 
     for flag in config.flags {
         return match flag.as_str() {
-            "-d" => Ok(evaluator.differentiate("x")),
+            // "-d" => Ok(evaluator.differentiate("x")),
             _ => Err("flag not found"),
         }
     }
