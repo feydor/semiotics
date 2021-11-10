@@ -37,7 +37,6 @@ fn main() {
         println!("Problem evaluating query: {}", err);
         process::exit(1);
     });
-    evaluator.display();
 }
 
 fn repl() {
@@ -50,9 +49,8 @@ fn repl() {
         if line.len() == 0 {
             process::exit(0);
         }
-                            
-        evaluator.parse_expr(&sanitize_query(&line));
-        evaluator.display();
+                   
+        evaluator.differentiate(&sanitize_query(&line), "x");
     }
 }
 
@@ -62,16 +60,20 @@ macro_rules! vec_of_strings {
 
 fn run(config: Config, evaluator: &mut Vivi) -> Result<(), &str> {
     if config.flags.len() == 0 {
-        // return Ok(evaluator.eval()); // x + 2x -> x ADD 2 MUL x
-        let e1 = vec_of_strings!["2", "+", "2"];
-        let e2 = vec_of_strings!["5", "+", "5"];
-        let sum = evaluator.make_sum(&e1, &e2);
+        // TEST queries
+        let e1 = vec_of_strings!["x"];
+        let e2 = vec_of_strings!["2"];
+        let s1 = evaluator.make_sum(e1, e2);
+        let f1 = vec_of_strings!["x"];
+        let f2 = vec_of_strings!["5"];
+        let s2 = evaluator.make_sum(f1, f2);
+        let sum = evaluator.make_sum(s1, s2);
         println!("{:?}", sum);
     }
 
     for flag in config.flags {
         return match flag.as_str() {
-            // "-d" => Ok(evaluator.differentiate("x")),
+            "-d" => Ok(evaluator.differentiate(&config.query, "x")),
             _ => Err("flag not found"),
         }
     }

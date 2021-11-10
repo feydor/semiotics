@@ -1,5 +1,5 @@
 # vivisix
-Symbolic Compu-tator of nMesh Mathematics
+Symbolic Computator of the Differentials
 ```
 USAGE:
     vivi [FLAGS] [QUERY]
