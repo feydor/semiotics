@@ -1,5 +1,6 @@
 // use crate::vivi::expr;
 
+#[allow(dead_code)]
 pub struct Vivi {
     tokens: Vec<String>,
 }

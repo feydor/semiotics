@@ -23,7 +23,6 @@ fn main() {
         process::exit(1);
     });
 
-    println!("args: {}", args.len());
     println!("query: {}", config.query);
     println!("flags: {:?}", config.flags);
 
@@ -41,7 +40,7 @@ fn main() {
 
 fn repl() {
     println!("{} {}", PROJECT_NAME, VERSION);
-    let mut evaluator = Vivi::new(&"".to_string());
+    let evaluator = Vivi::new(&"".to_string());
 
     loop {
         print!("> ");
@@ -73,7 +72,9 @@ fn run(config: Config, evaluator: &mut Vivi) -> Result<(), &str> {
 
     for flag in config.flags {
         return match flag.as_str() {
-            "-d" => Ok(evaluator.differentiate(&config.query, "x")),
+            "-dx" => Ok(evaluator.differentiate(&config.query, "x")),
+            s if s == "-h" || s == "--help" => Ok(print_help()),
+            s if s == "-V" || s == "--version" => Ok(println!("{} {}", PROJECT_NAME, VERSION)),
             _ => Err("flag not found"),
         }
     }
@@ -100,4 +101,23 @@ fn sanitize_query(query: &str) -> String {
          .filter(|c| c.is_alphanumeric() || c.is_ascii_punctuation() || c.is_whitespace())
          .map(|c| c.to_string().to_lowercase())
          .collect::<String>()
+}
+
+fn print_help() {
+    println!("{}", "
+    USAGE:
+        vivi [FLAGS] [QUERY]
+    
+    FLAGS:
+        -h, --help       Prints help information
+        -V, --version    Prints version information
+    
+    ARGS:
+        <QUERY>    a mathematically-encoded string
+     
+    EXAMPLE:
+        vivi 'x * x + 22' -dx
+        'x + x'
+
+    ");
 }
