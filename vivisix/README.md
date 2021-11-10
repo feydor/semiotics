@@ -11,4 +11,8 @@ FLAGS:
 
 ARGS:
     <QUERY>    a mathematically-encoded string
+ 
+EXAMPLE:
+    vivi 'x * x + 22' -dx
+    'x + x'
 ```
