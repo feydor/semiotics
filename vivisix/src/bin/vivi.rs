@@ -51,7 +51,7 @@ fn repl() {
             process::exit(0);
         }
                             
-        evaluator.expr(&sanitize_query(&line));
+        evaluator.parse_expr(&sanitize_query(&line));
         evaluator.display();
     }
 }
@@ -63,7 +63,7 @@ fn run(config: Config, evaluator: &mut Vivi) -> Result<(), &str> {
 
     for flag in config.flags {
         return match flag.as_str() {
-            "-d" => Ok(evaluator.derive()),
+            "-d" => Ok(evaluator.differentiate("x")),
             _ => Err("flag not found"),
         }
     }
