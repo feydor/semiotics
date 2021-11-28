@@ -39,10 +39,10 @@ fn main() {
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
 
-    init_and_loop(&mut stdout, args, query);
+    init_and_loop(&mut stdout, args, &query);
 }
 
-fn init_and_loop(stdout: &mut io::StdoutLock, args: clap::ArgMatches, init_query: String) {
+fn init_and_loop(stdout: &mut io::StdoutLock, args: clap::ArgMatches, init_query: &str) {
     let mut stdout = stdout.into_raw_mode().unwrap();
 
     // init Tui struct

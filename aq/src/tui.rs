@@ -11,12 +11,11 @@ use termion::input::TermRead;
 use std::io::{self, Write};
 use std::collections::HashMap;
 
-pub struct Tui {
+pub struct Tui<'a> {
     state: ConsoleState,
-    query: String,           // the current query
+    query: &'a str,           // the current query
     line: InputLine,
     history: History,
-    prompt: String,          // the default prompt
     do_print_trinomes: bool, // optional trinome printing
 }
 
@@ -37,20 +36,18 @@ pub enum TuiResult {
     Ready,
 }
 
-impl Tui {
-    pub fn new(init_query: String) -> Self {
+impl<'a> Tui<'a> {
+    pub fn new(init_query: &'a str) -> Self {
         Tui {
             query: init_query,
             state: ConsoleState::Start,
             line: InputLine::default(),
             history: History::default(),
-            prompt: "> ".to_owned(),
             do_print_trinomes: false,
         }
     }
 
     pub fn run(&mut self) -> TuiResult {
-        // let mut buffer = String::new();
         self.state = ConsoleState::Start;
 
         // go into raw mode (destroy at end of run)
@@ -206,7 +203,7 @@ impl Tui {
         }
     }
 
-    pub fn query(&self) -> &String {
+    pub fn query(&self) -> &str {
         &self.query
     }
 

@@ -113,18 +113,22 @@ fn is_product(expr: &Vec<String>, _var: &str) -> bool {
     !is_atomic(&expr) &&  expr[1] == "*"//expr.iter().any(|subexp| subexp == "*")
 }
 
+// a1 + a2
 fn augend(expr: &Vec<String>) -> Vec<String> {
     vec![expr[0].clone()]
 }
 
 fn addend(expr: &Vec<String>) -> Vec<String> {
-    vec![expr[2].clone()]
+    // vec![expr[2].clone()]
+    expr[2..].to_vec()
 }
 
+// m1 * m2
 fn multiplicand(expr: &Vec<String>) -> Vec<String> {
     vec![expr[0].clone()]
 }
 
 fn multiplier(expr: &Vec<String>) -> Vec<String> {
-    vec![expr[2].clone()]
+    // vec![expr[2].clone()]
+    expr[2..].to_vec()
 }

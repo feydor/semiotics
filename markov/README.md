@@ -1,5 +1,5 @@
 # markov
-NRG on Thirst for Annihilation
+NLP on Thirst for Annihilation
 ```
 USAGE:
     markov [FLAGS] [QUERY]

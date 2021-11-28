@@ -1,16 +1,13 @@
 //! aq - gematric and decimation functions for A. Barrow's Anglossic Qabbala (AQ)
-use lazy_static::lazy_static;
-const ALPHANUM: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-lazy_static! {
-	// alphanumeric ciphers go here
-    static ref AQ: Vec<i32> = (0..36).collect();
-}
+
+// alphanumeric ciphers go here
+const AQ: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 // full digital-reduction of any query string using August Barrow's method of Anglossic Qabbala
 // EX: nummificate("aok") -> [54, 9]
 pub fn nummificate(query: &str) -> Vec<i32> {
     let mut res = Vec::<i32>::new();
-    let mut n = aq(&query.to_string());
+    let mut n = gematria(&query, AQ);
     res.push(n);
 
     while !is_single_digit(&n) {
@@ -20,27 +17,14 @@ pub fn nummificate(query: &str) -> Vec<i32> {
     return res;
 }
 
-// English => AlphaNumerical => Numerical (via AQ or really any cipher spanning 0-9A-Z)
+// English => AlphaNumerical => Numerical (via AQ or really any cipher mapping 0-9A-Z)
 // Note: query must be uppercase
 // Note: query can be non-alphanumerical input (it will be ignored in the calculation)
-// EX: aq("aok") -> 54
-fn aq(query: &String) -> i32 {
-    if query.is_empty() {
-        return 0;
-    }
-    let mut chars: Vec<_> = query.split("").collect();
-    chars.remove(0);
-    chars.pop();
-
-    // index the query char-wise from last to first into ALPHANUM,
-    // giving the index of the numerical value in AQ; sum it
-    let curr = chars.pop().expect("query is empty!");
-    let i: usize;
-    match ALPHANUM.find(curr) {
-        None => return 0 + aq(&chars.join("")),
-        Some(index) => i = index,
-    }
-    return AQ[i] + aq(&chars.join(""));
+// EX: gematria("aok", "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") -> 54
+fn gematria(query: &str, cipher: &str) -> i32 {
+    query.chars()
+         .map(|ch| cipher.find(ch).unwrap_or_default() as i32)
+         .sum()
 }
 
 // decimation; digital reduction; plexing; modulo-summation
@@ -62,12 +46,14 @@ mod tests {
 
     #[test]
     fn nummificate_works() {
-    	assert_eq!(nummificate(&"AOK".to_string()), vec![54, 9]);
+    	assert_eq!(nummificate(&"AOK"), vec![54, 9]);
     }
 
     #[test]
-    fn aq_works() {
-    	assert_eq!(aq(&"ZERO".to_string()), 100);
+    fn gematria_works() {
+    	assert_eq!(gematria(&"ZERO", AQ), 100);
+        assert_eq!(gematria(&"zero", AQ), 0); // ignore lowercase
+        assert_eq!(gematria(&"😅", AQ), 0); // ignore non-ascii characters
     }
 
     #[test]
