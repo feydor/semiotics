@@ -27,12 +27,11 @@ fn main() -> Result<()> {
         for word in line.unwrap().split_whitespace() {
             let w = word.to_string();
             distinct.insert(w); // sets ignore duplicates
-            i = i + 1;
+            i += 1;
         }
     }
     println!("total: {}", i);
     println!("distinct: {}", distinct.len());
-
 
     Ok(())
 }
