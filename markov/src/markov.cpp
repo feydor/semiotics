@@ -1,4 +1,5 @@
 #include "markov/src/markov.h"
+#include <algorithm>
 #include <cstring> 
 #include <fstream>
 #include <iostream>
@@ -59,47 +60,17 @@ std::vector<std::string> split(const std::string &str, const std::string &delim)
     return tokens;
 }
 
-std::string get_random_matching_second(const std::vector<bigram_t> &bigrams, const std::string &first) {
+std::string get_random_matching_second(const std::vector<bigram_t> &bigrams,
+                                       const std::string &first) {
     std::random_device dev;
     std::mt19937 rng(dev());
 
-    std::vector<bigram_t> distinct = [](auto bigrams, auto first) {
-        std::vector<bigram_t> distinct;
-        for (auto b : bigrams) {
-            if (b.first == first)
-                distinct.push_back(b);
-        }
-        return distinct;
-    } (bigrams, first);
+    std::vector<bigram_t> distinct;
+    std::copy_if(bigrams.begin(), bigrams.end(), std::back_inserter(distinct), [first](auto bigram) {
+        return bigram.first == first;
+    });
 
     std::uniform_int_distribution<std::mt19937::result_type> rand_idx(0, distinct.size() - 1);
 
     return distinct[rand_idx(rng)].second;
 }
-
-// int main(int argc, char **argv) {
-
-//     // validate filename
-//     if (argc < 2) {
-//         std::cerr << "File missing.\n";
-//         return 1;
-//     }
-
-//     auto filename = argv[1];
-
-//     std::fstream file;
-//     std::stringstream text;
-//     file.exceptions(std::fstream::failbit | std::fstream::badbit);
-
-//     try {
-//         file.open(filename);
-//         text << file.rdbuf();
-//     } catch(std::fstream::failure &error) {
-//         std::cerr << "Exception opening/reading file.";
-//     }
-
-//     auto generated = markov(text.str(), 100);
-//     std::cout << *generated;
-
-//     return 0;
-// }
