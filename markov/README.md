@@ -15,5 +15,6 @@ ARGS:
 ## performance
 
 Using 'srx/txt/*' and generating 1000 words:
-- first attempt - 9.419 s
-- replacing string comparison loop with std::copy_if - 4.597 s
+- first attempt - 9.419s
+- replacing string comparison loop with std::copy_if - 4.597s
+- replace 'useless' character-stripping for loop with std::remove_if - 4.401s
