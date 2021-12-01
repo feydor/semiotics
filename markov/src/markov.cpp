@@ -1,5 +1,6 @@
 #include "markov/src/markov.h"
 #include <algorithm>
+#include <cstdint>
 #include <cstring> 
 #include <fstream>
 #include <iostream>
@@ -10,6 +11,7 @@
 #include <ranges>
 
 typedef std::pair<std::string, std::string> bigram_t;
+typedef std::vector<std::string> ngram_t;
 
 /**
  * @brief random text generation with variable number of words
@@ -43,6 +45,53 @@ std::unique_ptr<std::string> markov(const std::string &text, int words) {
     return std::make_unique<std::string>(generated);
 }
 
+std::unique_ptr<std::string> markovn(const std::string &text, int words, int N) {
+    // strip useless characters from text
+    std::string formatted;
+    std::remove_copy_if(text.begin(), text.end(), std::back_inserter(formatted), [](auto ch){
+        return (isdigit(ch) || ispunct(ch) || ch == '\n');
+    });
+
+    // split by space
+    auto tokens = split(formatted, ' ');
+
+    // get ngrams
+    auto ngrams = parse_ngrams<ngram_t::iterator>(tokens, N);
+
+    // generate text
+    auto generated = generate_text_from_ngrams<ngram_t::iterator>(ngrams, words);
+    return std::make_unique<std::string>(generated);
+}
+
+/**
+ * @brief divides the range into n chunks, where each chunk is a pair of It
+ * 
+ * @tparam It 
+ * @param range_from 
+ * @param range_to 
+ * @param n 
+ * @return std::vector<std::pair<It, It>> 
+ */
+template <std::forward_iterator It>
+std::vector<std::pair<It, It>> chunk(It range_from, It range_to, const long total, const std::ptrdiff_t n) {
+    const std::ptrdiff_t portion { n };
+    std::vector<std::pair<It, It>> chunks(total / portion);
+
+    It portion_end { range_from };
+
+    std::generate(chunks.begin(), chunks.end(), [&portion_end, portion]() {
+        It portion_start { portion_end };
+
+        portion_end += portion;
+        return std::make_pair(portion_start, portion_end);
+    });
+
+    // add in last
+    chunks.back().second = range_to;
+
+    return chunks;
+}
+
 /**
  * @brief get a vector of bigrams from a string
  * 
@@ -50,7 +99,7 @@ std::unique_ptr<std::string> markov(const std::string &text, int words) {
  * @return std::vector<bigram_t> 
  */
 std::vector<bigram_t> parse_bigrams(const std::string &text) {
-    std::vector<std::string> tokens = split(text, " ");
+    std::vector<std::string> tokens = split(text, ' ');
     std::vector<bigram_t> bigrams;
 
     if (!text.empty()) {
@@ -61,15 +110,44 @@ std::vector<bigram_t> parse_bigrams(const std::string &text) {
     return bigrams;
 }
 
-std::vector<std::string> split(const std::string &str, const std::string &delim) {
-    std::vector<std::string> tokens;
-    int start = 0;
-    int end = str.find(delim);
-    while (end != -1) {
-        tokens.push_back(str.substr(start, end - start));
-        start = end + delim.size();
-        end = str.find(delim, start);
+template <std::forward_iterator It>
+std::vector<std::pair<It, It>> parse_ngrams(std::vector<std::string> &tokens, auto n) {
+    return chunk(tokens.begin(), tokens.end(), tokens.size(), n);
+}
+
+template <std::forward_iterator It>
+std::string generate_text_from_ngrams(const std::vector<std::pair<It, It>> &ngrams, int words) {
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::uniform_int_distribution<std::mt19937::result_type> rand_idx(0, ngrams.size()-1);
+
+    std::string generated;
+    for (auto unused = 0; unused < words; ++unused) {
+        auto idx = rand_idx(dev);
+        auto random_first = *(ngrams[idx].first);
+
+        // std::uniform_int_distribution<std::mt19937::result_type> rand_idx2(0,
+        //     std::distance(ngrams[idx].first, ngrams[idx].second) - 1);
+        // auto second_idx = rand_idx2(dev);
+
+        std::string random_second;
+        for (auto itr = ngrams[idx].first+1; itr != ngrams[idx].second; ++itr)
+            random_second += *itr + " ";
+        
+        generated += random_first + " " + random_second;
     }
+    return generated;
+}
+
+std::vector<std::string> split(const std::string &str, const char delim) {
+    std::stringstream ss(str);
+    std::string s;
+    std::vector<std::string> tokens;
+
+    while (std::getline(ss, s, delim)) {
+        tokens.push_back(s);
+    }
+
     return tokens;
 }
 

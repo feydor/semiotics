@@ -6,7 +6,8 @@ use anyhow::{Result};
 mod ffi {
     unsafe extern "C++" {
         include!("markov/src/markov.h"); 
-        fn markov(text: &CxxString, words: i32) -> UniquePtr<CxxString>;
+        // fn markov(text: &CxxString, words: i32) -> UniquePtr<CxxString>;
+        fn markovn(text: &CxxString, words: i32, N: i32) -> UniquePtr<CxxString>;
     }
 }
 
@@ -20,6 +21,10 @@ struct Cli {
     // the number of words to generate
     #[structopt(default_value = "100")]
     word_count: i32,
+
+    // markov ngram
+    #[structopt(default_value = "4")]
+    ngram: i32,
 }
 
 // Run NLG on a text file and output the results
@@ -28,7 +33,7 @@ fn main() -> Result<()> {
     let text = fs::read_to_string(args.path)?;
 
     cxx::let_cxx_string!(cxx_text = text);
-    let generated = ffi::markov(&cxx_text, args.word_count);
+    let generated = ffi::markovn(&cxx_text, args.word_count, args.ngram);
     println!("{}", *generated);
 
     Ok(())
