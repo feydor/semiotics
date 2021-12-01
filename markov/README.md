@@ -21,7 +21,8 @@ EXAMPLE:
     ...
     The technical immortal blemish of mankind n’en est pas
     ...
-    The labyrinth interior intoxicated by the murmur told has ‘no assignable meaning’ epistemic ideological or moral that drives the artist into repression
+    The labyrinth interior intoxicated by the murmur told has ‘no assignable meaning’
+    epistemic ideological or moral that drives the artist into repression
 
 ```
 
