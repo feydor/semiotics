@@ -21,7 +21,8 @@ EXAMPLE:
     ...
     only nausea and fear are there more
     ...
-    The labyrinth interior intoxicated by the murmur told has ‘no assignable meaning’ epistemic ideological or moral that drives the artist into repression
+    The labyrinth interior intoxicated by the murmur told has ‘no assignable meaning’
+    epistemic ideological or moral that drives the artist into repression
 
 ```
 
