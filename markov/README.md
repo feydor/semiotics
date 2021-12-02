@@ -19,7 +19,7 @@ EXAMPLE:
     markov ./src/txt/land-thirst-for-annihilation 100 10
 
     ...
-    The technical immortal blemish of mankind n’en est pas
+    only nausea and fear are there more
     ...
     The labyrinth interior intoxicated by the murmur told has ‘no assignable meaning’ epistemic ideological or moral that drives the artist into repression
 
@@ -30,7 +30,8 @@ EXAMPLE:
 Using 'srx/txt/*' and generating 1,000 words:
 - first attempt - 9.419s
 - replacing string comparison loop with std::copy_if - 4.597s
-- replace 'useless' character-stripping for loop with std::remove_if - 4.401s
 
-ngram version, log(n) time, 1,000,000 words, N=4
+ngram version, 1,000,000 words, N=4
+uses iterators instead of raw std::string (relevant to copies)
 - first attempt - 5.144s
+- replace use of true random value with psuedo-random (std::mt19937) - 1.066s

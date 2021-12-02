@@ -6,7 +6,6 @@ use anyhow::{Result};
 mod ffi {
     unsafe extern "C++" {
         include!("markov/src/markov.h"); 
-        // fn markov(text: &CxxString, words: i32) -> UniquePtr<CxxString>;
         fn markovn(text: &CxxString, words: i32, N: i32) -> UniquePtr<CxxString>;
     }
 }
