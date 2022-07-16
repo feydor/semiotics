@@ -1,5 +1,7 @@
 #include "dict.h"
+#include "set.h"
 #include <assert.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -97,34 +99,55 @@ void permutate(Dict *dict, char word[], size_t curr, size_t end) {
     }
 }
 
-bool is_anagram(char *a, char *b) {
+bool is_anagram(char a[], char b[]) {
     int first_freq[26] = {0};
     int second_freq[26] = {0};
-    for (int i = 0; !a[i]; ++i)
-        first_freq[a[i]-'a']++;
+    for (int i = 0; a[i]; ++i)
+        first_freq[a[i] - 'a']++;
 
-    for (int i = 0; !b[i]; ++i)
-        second_freq[b[i]-'a']++;
+    for (int i = 0; b[i]; ++i)
+        second_freq[b[i] - 'a']++;
 
     for (int i = 0; i < 26; ++i)
-        if (first_freq[i] != second_freq[i]) return false;
+        if (first_freq[i] != second_freq[i])
+            return false;
     return true;
+}
+
+void load_dictionary(AnaStrSet *dict) {
+    char *src = "../res/words.txt";
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t nread;
+    FILE *fp = fopen(src, "r");
+    if (!fp) exit(EXIT_FAILURE);
+    while ((nread = getline(&line, &len, fp)) != -1) {
+        line[strcspn(line, "\n")] = 0;
+        for (int i = 0; line[i]; i++) {
+            line[i] = (char)tolower(line[i]);
+        }
+        set_load(dict, line);
+    }
+
+    free(line);
+    fclose(fp);
 }
 
 int main(int argc, char *argv[]) {
     (void)argc;
     (void)argv;
-    
-    // there are n! permutations for a word of len n
-    char word[] = "mother";
-    size_t len = strlen(word);
-    printf("# of unique letters: %lu\n", unique_letters(word, len));
-    Dict *permutations = dict_create();
 
-    permutate(permutations, word, 0, len-1);
-    
-    printf("printing unique permutations...\n");
-    printf("# of unique permutations: %lu\n", permutations->size);
-    dict_print(permutations);
-    dict_free(permutations);
+    AnaStrSet *dict = set_create();
+    load_dictionary(dict);
+    AnaStrSet *results = set_create();
+
+    char word[] = "mother";
+    for (size_t i = 0; i < dict->size; ++i) {
+        char *curr = dict->strings[i];
+        if (is_anagram(curr, word)) set_add(results, curr);
+    }
+
+    set_print(results);
+    set_free(dict);
+    set_free(results);
 }

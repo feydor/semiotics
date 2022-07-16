@@ -3,14 +3,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-typedef struct DictEntry DictEntry;
-struct DictEntry {
-    char *word;
-    char *alphabetical;
-    size_t key;
-    size_t len;
-};
-
 typedef struct Dict Dict;
 struct Dict {
     char **strings;
