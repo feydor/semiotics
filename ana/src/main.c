@@ -1,3 +1,4 @@
+#include "dict.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -67,68 +68,6 @@ char *reversed(char *word, size_t len) {
     return res;
 }
 
-typedef struct Dict Dict;
-struct Dict {
-    char **strings;
-    size_t size;
-    size_t capacity;
-};
-
-Dict *dict_create() {
-    Dict *dict = malloc(sizeof(Dict));
-    if (!dict) return NULL;
-    dict->size = 0;
-    dict->capacity = 5;
-    dict->strings = calloc(dict->capacity, sizeof(char *));
-    if (!dict->strings) return NULL;
-    for (size_t i = 0; i < dict->capacity; ++i) {
-        dict->strings[i] = strdup("\0");
-        if (!dict->strings[i]) return NULL;
-    }
-    return dict;
-}
-
-void dict_push(Dict *dict, char word[]) {
-    if (dict->size == dict->capacity) {
-        dict->capacity *= 2;
-        dict->strings = realloc(dict->strings, dict->capacity * sizeof(char *));
-        if (!dict->strings) {
-            fprintf(stderr, "dict_push: failed realloc\n");
-            exit(EXIT_FAILURE);
-        }
-    }
-    dict->strings[dict->size] = strdup(word);
-    if (!dict->strings[dict->size]) {
-        fprintf(stderr, "dict_push: failed strdup\n");
-        exit(EXIT_FAILURE);
-    }
-    ++dict->size;
-}
-
-bool dict_includes(Dict *dict, char word[]) {
-    for (size_t i = 0; i < dict->size; ++i) {
-        if (!strcmp(dict->strings[i], word)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-void dict_print(Dict *dict) {
-    for (size_t i = 0; i < dict->size; ++i) {
-        printf("%s\n", dict->strings[i]);
-    }
-}
-
-void dict_free(Dict *dict) {
-    for (size_t i = 0; i < dict->size; ++i) {
-        free(dict->strings[i]);
-        dict->strings[i] = NULL;
-    }
-    free(dict->strings);
-    dict->strings = NULL;
-}
-
 bool str_includes_ch(char *str, size_t len, char ch) {
     for (size_t i = 0; i < len; ++i) {
         if (str[i] == ch) return true;
@@ -156,6 +95,20 @@ void permutate(Dict *dict, char word[], size_t curr, size_t end) {
             swap(word+curr, word+i);
         }
     }
+}
+
+bool is_anagram(char *a, char *b) {
+    int first_freq[26] = {0};
+    int second_freq[26] = {0};
+    for (int i = 0; !a[i]; ++i)
+        first_freq[a[i]-'a']++;
+
+    for (int i = 0; !b[i]; ++i)
+        second_freq[b[i]-'a']++;
+
+    for (int i = 0; i < 26; ++i)
+        if (first_freq[i] != second_freq[i]) return false;
+    return true;
 }
 
 int main(int argc, char *argv[]) {
