@@ -54,9 +54,12 @@ pub mod gram {
             let mut letters_used = Vec::new();
             let result = without_letters_returned(&word, &letters_vec, &mut letters_used, 0);
             if result.len() < word.len() {
-                letters_vec = letters_vec.iter()
-                                         .filter(|a| letters_used.iter().find(|b| b == a).is_none())
-                                         .cloned().collect();
+                for used in letters_used {
+                    match letters_vec.iter().position(|&a| a == used) {
+                        Some(idx) => {letters_vec.remove(idx);},
+                        _ => {},
+                    }
+                }
             }
 
             if result.len() > 0 {
@@ -78,7 +81,7 @@ pub mod gram {
             }
         }
         
-        return anagrams;
+        anagrams
     }
 }
 
@@ -136,5 +139,7 @@ mod tests {
         let sentence = ["aaa"];
         let letters = ['a', 'a', 'a', 'a'];
         assert_eq!(remove_letters_from_sentence(&sentence, &letters).len(), 0);
+
+        assert_eq!(remove_letters_from_sentence(&["tab", "target"], &['t', 't']), vec!["ab", "arget"]);
     }
 }

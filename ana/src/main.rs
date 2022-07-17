@@ -8,7 +8,6 @@ use cursive::{
     Cursive,
 };
 use log::LevelFilter;
-use log::{info};
 use std::process;
 
 fn usage_and_exit() {
@@ -30,7 +29,19 @@ fn main() {
 
     let input: String = args[1].trim().to_string();
     let mut siv = cursive::default();
-    
+    siv.set_theme(cursive::theme::Theme::default().with(|theme| {
+        use cursive::theme::{BaseColor::*, Color::*, PaletteColor::*, BorderStyle::*};
+        theme.shadow = false;
+        theme.palette[Background] = TerminalDefault;
+        theme.palette[Primary] = Dark(Black);
+        theme.palette[Secondary] = Dark(Black);
+        theme.palette[Tertiary] = Dark(Black);
+        theme.palette[TitlePrimary] = Dark(Red);
+        theme.palette[TitleSecondary] = Dark(Black);
+        theme.palette[Highlight] = Dark(Red);
+        theme.palette[HighlightInactive] = Dark(Black);
+    }));
+
     siv.add_global_callback(Event::Key(cursive::event::Key::Esc), |s| s.quit());
 
     let input_box = EditView::new().on_submit(handle_submit).with_name("input_box").full_width();
@@ -42,8 +53,8 @@ fn main() {
             .child(
                 Dialog::around(
                     LinearLayout::vertical()
-                        .child(scroll_results)
                         .child(input_box)
+                        .child(scroll_results)
                         .full_width(),
                 )
                 .title("ana"),
@@ -70,6 +81,8 @@ fn handle_submit(siv: &mut Cursive, text: &str) {
     let sentence: Vec<&str> = lowercase.split(' ').collect();
     let letters: Vec<char> = text.chars().collect();
     let result: String =
-        ana::gram::remove_letters_from_sentence(&sentence[0..], &letters).join("");
-    results_list.add_item(result.clone(), result);
+        ana::gram::remove_letters_from_sentence(&sentence[0..], &letters).join(" ").to_ascii_uppercase();
+    if result != lowercase {
+        results_list.add_item(result.clone(), result);
+    }
 }
