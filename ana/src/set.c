@@ -1,4 +1,5 @@
 #include "set.h"
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -55,4 +56,20 @@ void set_free(AnaStrSet *set) {
     for (size_t i = 0; i < set->size; ++i)
         free(set->strings[i]);
     free(set->strings);
+}
+
+char *set_at(AnaStrSet *set, uint i) {
+    assert(i < set->size);
+    return set->strings[i];
+}
+
+AnaStrSet *n_size_phrases(AnaStrSet *set, size_t n) {
+    AnaStrSet *phrases = set_create();
+    for (uint i = 0; i < set->size; ++i) {
+        char *str = set_at(set, i);
+        if (strlen(str) == n) {
+            set_load(phrases, str);
+        }
+    }
+    return phrases;
 }

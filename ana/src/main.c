@@ -134,20 +134,23 @@ void load_dictionary(AnaStrSet *dict) {
 }
 
 int main(int argc, char *argv[]) {
-    (void)argc;
-    (void)argv;
+    if (argc != 2) {
+        printf("program: ana [word]\n");
+        exit(EXIT_FAILURE);
+    }
 
     AnaStrSet *dict = set_create();
     load_dictionary(dict);
     AnaStrSet *results = set_create();
 
-    char word[] = "mother";
     for (size_t i = 0; i < dict->size; ++i) {
         char *curr = dict->strings[i];
-        if (is_anagram(curr, word)) set_add(results, curr);
+        if (is_anagram(curr, argv[1])) set_add(results, curr);
     }
 
     set_print(results);
+    
     set_free(dict);
     set_free(results);
+    exit(EXIT_SUCCESS);
 }

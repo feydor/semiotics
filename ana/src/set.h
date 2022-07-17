@@ -16,5 +16,7 @@ void set_load(AnaStrSet *set, char word[]);
 void set_add(AnaStrSet *set, char word[]);
 void set_print(AnaStrSet *set);
 void set_free(AnaStrSet *set);
+char *set_at(AnaStrSet *set, uint i);
+AnaStrSet *n_size_phrases(AnaStrSet *set, size_t n);
 
 #endif
