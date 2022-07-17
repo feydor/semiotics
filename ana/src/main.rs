@@ -1,15 +1,14 @@
 use cursive::{
-    event::{Event, EventResult, Key},
+    event::{Event},
     traits::*,
-    view::{scroll::Scroller, Scrollable},
     views::{
-        Button, Dialog, EditView, LinearLayout, OnEventView, Panel, ScrollView, SelectView,
+        Dialog, EditView, LinearLayout, ScrollView, SelectView,
         TextView,
     },
     Cursive,
 };
 use log::LevelFilter;
-use log::{info, trace, warn};
+use log::{info};
 use std::process;
 
 fn usage_and_exit() {
@@ -71,6 +70,6 @@ fn handle_submit(siv: &mut Cursive, text: &str) {
     let sentence: Vec<&str> = lowercase.split(' ').collect();
     let letters: Vec<char> = text.chars().collect();
     let result: String =
-        anars::ana::remove_letters_from_sentence(&sentence[0..], &letters).join("");
+        ana::gram::remove_letters_from_sentence(&sentence[0..], &letters).join("");
     results_list.add_item(result.clone(), result);
 }

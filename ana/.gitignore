@@ -1,7 +1,6 @@
-bin/
-build/
-subprojects/*/
-.idea/
-.vscode/
-
-res/test.txt
+/target
+/Cargo.lock
+*.log
+/build
+/.vscode
+/res/test.txt

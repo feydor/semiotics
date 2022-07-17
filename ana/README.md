@@ -1,9 +1,5 @@
 # ana
-subterreanean anagramatic locator
+subterreanean anagramatic locator tool in ncurses
 ```shell
-program: ana [word]
-example: ana lewis
-wiles
+program: ana [sentence]
 ```
-## todo
-- multi-phrase option
