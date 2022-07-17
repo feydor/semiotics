@@ -1,8 +1,68 @@
 pub mod gram {
+    use std::path::Path;
+    use std::fs::File;
+    use std::io::{self, BufRead};
+    use itertools::Itertools;
+    
+    #[derive(Debug)]
+    pub struct Dict {
+        // stored in alphabetical order
+        entries: Vec<(String, String)>
+    }
+
+    impl Dict {
+        pub fn new() -> Dict {
+            Dict {
+                entries: Vec::new(),
+            }
+        }
+
+        // stores a copy of word in vec
+        pub fn load(&mut self, word: &str) {
+            let entry = (
+                word.to_string(),
+                word.chars().sorted().rev().collect(),
+            );
+            self.entries.push(entry);
+        }
+
+        pub fn anagrams(&self, input: &str) -> Vec<&str> {
+            let mut res: Vec<&str> = vec![];
+            let sorted_input = input.chars().sorted().rev().collect::<String>();
+            for (entry, ordered) in self.entries.iter() {
+                if  sorted_input == *ordered && input != entry {
+                    res.push(entry);
+                }
+            }
+            res
+        }
+
+        // returns an iterator over the lines of the filename
+        fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+        where P: AsRef<Path> {
+            let file = File::open(filename)?;
+            Ok(io::BufReader::new(file).lines())
+        }
+
+        pub fn load_from_file(&mut self, filepath: &str) {
+            if let Ok(lines) = Dict::read_lines(filepath) {
+                for line in lines {
+                    if let Ok(word) = line {
+                        self.load(&word);
+                    }
+                }
+            }
+        }
+    }
+
+    // if not alphabetical, returns 0
     fn ord(ch: char) -> usize {
         let alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
         'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
-        alphabet.iter().position(|&x| x == ch).unwrap()
+        match alphabet.iter().position(|&x| x == ch) {
+            Some(i) => i,
+            _ => 0
+        }
     }
 
     // ascii 4ever
@@ -14,7 +74,7 @@ pub mod gram {
     pub fn without_letter(word: &str, letter: char) -> Option<String> {
         match word.split_once(letter) {
             None => None,
-            Some(split) => Some(split.0.to_string() + split.1),
+            Some((first, second)) => Some(first.to_string() + second),
         }
     }
 
@@ -70,13 +130,17 @@ pub mod gram {
         remaining_sentence
     }
 
-    pub fn single_word_anagrams(words: &[&str], dict: &[&str]) -> Vec<String> {
+    // TODO: two heap allocations just for to check for anagrams lol
+    pub fn are_anagrams(a: &str, b: &str) -> bool {
+        a.chars().sorted().rev().collect::<String>() == b.chars().sorted().rev().collect::<String>()
+    }
+
+    pub fn single_word_anagrams<'a>(words: &[&str], dict: &'a [&str]) -> Vec<&'a str> {
         let mut anagrams = Vec::new();
-        let dict_ords: Vec<usize> = dict.iter().map(|&s| str_ord(s)).collect();
-        for n in words.iter().map(|&s| str_ord(s)) {
-            for (i, &ord) in dict_ords.iter().enumerate() {
-                if ord == n {
-                    anagrams.push(dict[i].to_string());
+        for w in words {
+            for &d in dict {
+                if are_anagrams(w, d) {
+                    anagrams.push(d);
                 }
             }
         }

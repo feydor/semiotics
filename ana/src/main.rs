@@ -24,6 +24,10 @@ fn main() {
         _ => usage_and_exit(),
     }
 
+    // load dict from pre-defined filepath
+    let mut dict = ana::gram::Dict::new();
+    dict.load_from_file("res/words.txt");
+
     let input: &str = args[1].trim();
     let mut siv = cursive::default();
     siv.set_theme(cursive::theme::Theme::default().with(|theme| {
@@ -71,7 +75,18 @@ fn main() {
             ),
     );
 
+    run_single_anagrams(&mut siv, &dict);
     siv.run();
+}
+
+fn run_single_anagrams(siv: &mut Cursive, dict: &ana::gram::Dict) {
+    let mut results_list = siv.find_name::<SelectView<String>>("results").unwrap();
+    let input = results_list.selection().unwrap();
+
+    let anagrams = dict.anagrams(&input);
+    for anagram in anagrams {
+        results_list.add_item(anagram.to_string(), anagram.to_string());
+    }
 }
 
 fn handle_submit(siv: &mut Cursive, text: &str) {
