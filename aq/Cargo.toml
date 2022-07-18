@@ -13,6 +13,6 @@ name = "aqq"
 path = "src/main.rs"
 
 [dependencies]
-termion = "*"
+toei = { git = "https://github.com/feydor/toei" }
 lazy_static = "1.4.0"
 clap = "~2.27.0"

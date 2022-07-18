@@ -40,6 +40,36 @@ fn is_single_digit(n: &i32) -> bool {
     n.abs() < 10
 }
 
+pub fn trinomes(query: &str) -> String {
+    let mut i = 0;
+    let mut trinomes = Vec::<i32>::new();
+    let mut output_str = "THE IRON LAW OF SIX\n".to_owned();
+    for c in query.chars() {
+        let trinome = nummificate(&c.to_string().to_uppercase())[0];
+        trinomes.push(trinome);
+        i += 1;
+        if i % 3 == 0 {
+            output_str += &hex_trinomes(&trinomes);
+            trinomes.clear();
+        }
+    }
+    output_str
+}
+
+// prints the hex trinome in color, using itself
+fn hex_trinomes(trinomes: &Vec<i32>) -> String {
+    if trinomes.len() < 3 {
+        panic!("trinomes must be hex.");
+    }
+
+    let mut s = String::from(" ");
+    for t in trinomes {
+        s.push_str(format!("{:#04X} ", t).as_str());
+    }
+    s.push_str("\n");
+    s
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;

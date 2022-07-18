@@ -14,7 +14,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "lazy_static",
- "termion",
+ "toei",
 ]
 
 [[package]]
@@ -125,6 +125,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c0b59b6b4b44d867f1370ef1bd91bfb262bf07bf0ae65c202ea2fbc16153b693"
 dependencies = [
  "unicode-width",
+]
+
+[[package]]
+name = "toei"
+version = "0.1.0"
+source = "git+https://github.com/feydor/toei#095846e0e1f60954b014b40ce08a2d2540b3f6c9"
+dependencies = [
+ "termion",
 ]
 
 [[package]]
