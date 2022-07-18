@@ -1,6 +1,9 @@
 # ana
 subterreanean anagramatic locator tool
-![screenshot](/res/screenshot.png)
+
+![screenshot](/ana/res/screenshot.png)<br />
+
+## usage
 ```shell
 program: ana [sentence]
 ```
