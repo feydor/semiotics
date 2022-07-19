@@ -30,7 +30,9 @@ fn main() {
         let mut out: String = format!("{} -> {}", s, v[0]);
         if args.is_present("t") {
             out += "\n";
-            out += &aq::trinomes(&s);
+            let rgb = aq::hex_trinome(&s);
+            out += &format!("{:#08X} ", v[0]);
+            out += &color::bg_rgb("        ", rgb);
         }
         return out;
     };

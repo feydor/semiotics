@@ -40,34 +40,29 @@ fn is_single_digit(n: &i32) -> bool {
     n.abs() < 10
 }
 
-pub fn trinomes(query: &str) -> String {
+// every three chars in query generates an RGB hex values
+// ignores chars at end, where i % 3 == 0
+// src: https://northanger.livejournal.com/272673.html
+pub fn hex_triplets(query: &str) -> Vec<(u8, u8, u8)> {
+    let mut hex_trips = Vec::<(u8, u8, u8)>::new();
     let mut i = 0;
-    let mut trinomes = Vec::<i32>::new();
-    let mut output_str = "THE IRON LAW OF SIX\n".to_owned();
-    for c in query.chars() {
-        let trinome = nummificate(&c.to_string().to_uppercase())[0];
-        trinomes.push(trinome);
+    let mut arr: [u8; 3] = [0, 0, 0];
+    for ch in query.chars() {
+        arr[i] = nummificate(&ch.to_string().to_uppercase())[0] as u8;
         i += 1;
         if i % 3 == 0 {
-            output_str += &hex_trinomes(&trinomes);
-            trinomes.clear();
+            hex_trips.push((arr[0], arr[1], arr[2]));
+            i = 0;
         }
     }
-    output_str
+    hex_trips
 }
 
-// prints the hex trinome in color, using itself
-fn hex_trinomes(trinomes: &Vec<i32>) -> String {
-    if trinomes.len() < 3 {
-        panic!("trinomes must be hex.");
-    }
-
-    let mut s = String::from(" ");
-    for t in trinomes {
-        s.push_str(format!("{:#04X} ", t).as_str());
-    }
-    s.push_str("\n");
-    s
+pub fn hex_trinome(query: &str) -> (u8, u8, u8) {
+    let n = nummificate(&query.to_uppercase())[0];
+    ((n & 0x00FF0000 >> 16) as u8,
+    (n & 0x0000FF00 >> 8) as u8,
+    n as u8)
 }
 
 #[cfg(test)]

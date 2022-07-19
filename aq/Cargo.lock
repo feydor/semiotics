@@ -130,7 +130,7 @@ dependencies = [
 [[package]]
 name = "toei"
 version = "0.1.0"
-source = "git+https://github.com/feydor/toei#095846e0e1f60954b014b40ce08a2d2540b3f6c9"
+source = "git+https://github.com/feydor/toei#e095e733b81c79b216c1f562c8dc1cdbf9142dfb"
 dependencies = [
  "termion",
 ]
