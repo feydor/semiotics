@@ -3,7 +3,7 @@
 "*...[Y]ou don't ask whether it's meaningful, but only if it's demonstrable*" - On Barrow's Angels
 
 ## build
-All programs in this repository can be built using [cargo](https://www.rust-lang.org/learn/get-started):
+most programs in this repository can be built using [cargo](https://www.rust-lang.org/learn/get-started), otherwise [gcc](https://gcc.gnu.org/)
 ```sh
 git clone https://github.com/feydor/semiotics
 cd aq
