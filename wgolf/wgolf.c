@@ -1,6 +1,7 @@
 // strpool - what's an allocation?
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #define BUFSIZE 333
 #define max(a,b) (((a)>(b))?(a):(b))
 static struct {
@@ -70,7 +71,11 @@ int strview_cmp(strview s1, strview s2) {
 }
 
 int main(void) {
-    strview s = strview_from("hero");
-    strview_print_debug(s);
-    printf("%s\n", strview_get(s));
+    char bytes[33];
+    int urandom = open("/dev/urandom", O_RDONLY);
+    for (int i = 0; i < 10; ++i) {
+        read(urandom, bytes, sizeof(bytes));
+        strview s = strview_from(bytes);
+        printf("%s\n", strview_get(s));
+    }
 }
