@@ -10,7 +10,7 @@
 typedef struct strpool strpool;
 struct strpool {
     char buf[BUFSIZE];
-    size_t i;
+    size_t sp; // should always be pointing at '\0'
     size_t size;
 };
 
@@ -28,17 +28,17 @@ struct strview {
 
 // potential buffer overflow
 strview strview_from(strpool *pool, char *s) {
-    size_t saved = pool->i;
+    size_t saved = pool->sp;
     size_t len = 0;
     while (*s) {
-        pool->buf[pool->i] = *s;
-        pool->i++;
+        pool->buf[pool->sp] = *s;
+        pool->sp++;
         len++;
         s++;
     }
-    pool->buf[pool->i++] = '\0';
+    pool->buf[pool->sp++] = '\0';
 
-    if (pool->i >= BUFSIZE) {
+    if (pool->sp >= BUFSIZE) {
         fprintf(stderr, "strpool buffer overflow\n");
         exit(EXIT_FAILURE);
     } 
@@ -47,27 +47,8 @@ strview strview_from(strpool *pool, char *s) {
     return (strview){ .ptr = saved, .len = len };
 }
 
-char *strview_get(strpool *pool, strview s) {
+char *strpool_get(strpool *pool, strview s) {
     return pool->buf+s.ptr;
-}
-
-// print ith string in pool
-void strpool_print(strpool *pool, size_t i) {
-    assert(i < pool->size);
-    size_t count = 0;
-    size_t sp = 0;
-    while (count < i) {
-        while (pool->buf[sp++]);
-        count++;
-    }
-    
-    // sp points to specified string
-    printf("'%s'\n", &pool->buf[sp]);
-}
-
-void strview_pushc(strpool *pool, strview s, char c) {
-    pool->buf[s.ptr] = c;
-    s.len++;
 }
 
 void strview_print_debug(strpool *pool, strview s) {
@@ -115,6 +96,42 @@ void test_strview_cmp(strpool *p) {
     printf("tests passed on strview_cmp\n");
 }
 
+// f('lewis',3) -> 'lews'
+void strview_delete_at(strpool *p, strview s, size_t i) {
+    assert(i < s.len);
+    memcpy(strpool_get(p,s)+i, strpool_get(p,s)+i+1, s.len-i+1);
+    s.len--;
+}
+
+void strview_replace_at(strpool *p, strview s, char c, size_t i) {
+    assert(i < s.len);
+    *(strpool_get(p, s)+i) = c;
+}
+
+strview strview_prepend_at(strpool *p, strview s, char c, size_t i) {
+    // cheat by making new str in pool
+    char new[s.len+1];
+    new[0] = c;
+    memcpy(new+1, strpool_get(p,s), s.len+1);
+    return strview_from(p, new);
+}
+
+// src is invalidated
+strview strview_mov(strpool *p, strview dest, strview src) {
+    if (dest.len == src.len) {
+        strcpy(strpool_get(p, dest), strpool_get(p, src));
+        dest.len = src.len;
+    } else if (dest.len > src.len) {
+        memcpy(strpool_get(p, dest), strpool_get(p, src), src.len+1);
+        dest.len = src.len;
+    } else {
+        strview new = strview_from(p, strpool_get(p, src));
+        dest.ptr = new.ptr;
+        dest.len = new.len;
+    }
+    return dest;
+}
+
 dict load_dict(size_t wordlen) {
     FILE *fp = fopen("/usr/share/dict/words", "r");
     if (!fp) {
@@ -141,10 +158,9 @@ char ALPHABET[] = "abcdefghijklmnopqrstuvwxyz";
 int main(void) {
     strpool sp = {0};
     strview s = strview_from(&sp, "wgolf 0.1.0");
-    printf("%s\n", strview_get(&sp, s));
+    printf("%s\n", strpool_get(&sp, s));
     test_strview_cmp(&sp);
 
     dict d = load_dict(4);
-    strpool_print(&d.pool, 0);
     assert(27 == sizeof(ALPHABET));
 }
