@@ -1,10 +1,10 @@
 // strpool - what's an allocation?
 #include <assert.h>
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
 #define BUFSIZE 19333
 #define max(a,b) (((a)>(b))?(a):(b))
 typedef struct strpool strpool;
@@ -20,6 +20,7 @@ struct dict {
     size_t size;
 };
 
+// stringview type
 typedef struct strv strv;
 struct strv {
     size_t ptr;
@@ -106,17 +107,17 @@ void test_strv_delete_at(strpool *p) {
     // delete in middle
     strv a = strpool_new(p, "lewis");
     strv_delete_at(p, a, 3);
-    assert(0 == strcmp("lews", strpool_get(p, a)));
+    assert(!strcmp("lews", strpool_get(p, a)));
 
     // delete at end
     a = strpool_new(p, "abc");
     strv_delete_at(p, a, 2);
-    assert(0 == strcmp("ab", strpool_get(p, a)));
+    assert(!strcmp("ab", strpool_get(p, a)));
 
     // delete at the begining
     a = strpool_new(p, "ed");
     strv_delete_at(p, a, 0);
-    assert(0 == strcmp("d", strpool_get(p, a)));
+    assert(!strcmp("d", strpool_get(p, a)));
 }
 
 void strv_replace_at(strpool *p, strv s, size_t i, char c) {
@@ -245,25 +246,51 @@ dict load_dict(size_t wordlen) {
     return d;
 }
 
-char ALPHABET[] = "abcdefghijklmnopqrstuvwxyz";
-/*void wgolf(strpool sp, dict d, strv dest, strv src, size_t start, size_t *n) {
-  if (!strv_cmp(dest, src)) return;
-  int ac = 0;
-  for (char a = ALPHABET[ac]; a; ++ac) {
-  for (int i = 0; i < src.len; ++i) {
-  strv_delete_at(sp, src, i);
-  strv word = strv_prependc(sp, s, dest.ptr);
-  if (in_dict(strpool_get(sp, word))) {
-  src = strv_move(src, word);
- *n++;
- }
- }
- }
+// TODO: change all memcpy to use sizeof
+bool strpool_alphabetical_search(strpool p, char *s) {
+    size_t sp = 0;
+    while (sp != p.sp) {
+        size_t len = 0;
+        while (p.buf[len++]);
+        char found[len+1];
+        memcpy(found, p.buf+sp, sizeof(found));
+        if (!strcmp(found, s)) return true;
+        if (found[0] > s[0]) return false;
+        sp += len;
+    }
+    return false;
+}
 
- if (strv_cmp(dest, src))
- wgolf(dest, src, start, n);
- }
- */
+void test_strpool_alphabetical_search(dict d) {
+    assert(strpool_alphabetical_search(d.pool, "zoos"));
+    assert(strpool_alphabetical_search(d.pool, "abby"));
+    assert(!strpool_alphabetical_search(d.pool, "zzzzzz"));
+    assert(!strpool_alphabetical_search(d.pool, ""));
+}
+
+// dict is in alphabetical order
+bool in_dict(dict d, strv s) {
+    return strpool_alphabetical_search(d.pool, strpool_get(&d.pool, s));
+}
+
+
+char ALPHABET[] = "abcdefghijklmnopqrstuvwxyz";
+
+void wgolf(strpool *p, dict *d, strv dest, strv src, size_t start, size_t *n) {
+    assert(dest.len == src.len);
+    if (!strv_cmp(p, dest, src)) return;
+    int ac = 0;
+    char a;
+    while ((a = ALPHABET[ac++])) {
+        char temp = strpool_get(p, src)[start];
+        strpool_get(p, src)[start] = a;
+        if (strpool_get(p, dest)[start] == strpool_get(p, src)[start]) {
+            (*n)++;
+            wgolf(p, d, dest, src, start+1, n);
+        }
+        strpool_get(p, src)[start] = temp;
+    }
+}
 
 void test_strv() {
     strpool p = {0};
@@ -277,8 +304,16 @@ void test_strv() {
 }
 
 int main(void) {
+    assert(27 == sizeof(ALPHABET));
     printf("wgolf 0.1.0\n");
     test_strv();
     dict d = load_dict(4);
-    assert(27 == sizeof(ALPHABET));
+    test_strpool_alphabetical_search(d);
+    
+    strpool p = {0};
+    strv src = strpool_new(&p, "head");
+    strv dest = strpool_new(&p, "tail");
+    size_t n = 0;
+    wgolf(&p, &d, dest, src, 0, &n);
+    printf("%s -> %s in %lu steps.\n", strpool_get(&p, src), strpool_get(&p, dest), n);
 }
