@@ -5,14 +5,13 @@ authors = ["Victor Reyes <vreyes85739@outlook.com>"]
 edition = "2018"
 
 [lib]
-name = "aq"
+name = "libaq"
 path = "src/lib.rs"
 
 [[bin]]
-name = "aqq"
+name = "aq"
 path = "src/main.rs"
 
 [dependencies]
-toei = { git = "https://github.com/feydor/toei" }
-lazy_static = "1.4.0"
+colored = "2"
 clap = "~2.27.0"
