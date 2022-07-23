@@ -1,13 +1,17 @@
 # aq
 deCrypter for Anglobal communications
+
+### screenshot
 ![screenshot](/aq/res/2021-07-13_22-30.png)<br />
+
+### usage
 ```
 USAGE:
     aq [FLAGS] [QUERY]
 
 FLAGS:
     -h, --help       Prints help information
-    -t               prints hex trinomes
+    -i               start interactive prompt
     -V, --version    Prints version information
 
 ARGS:
