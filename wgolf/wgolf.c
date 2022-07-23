@@ -255,7 +255,7 @@ bool strpool_alphabetical_search(strpool p, char *s) {
         char found[len+1];
         memcpy(found, p.buf+sp, sizeof(found));
         if (!strcmp(found, s)) return true;
-        if (found[0] > s[0]) return false;
+        // if (found[0] > s[0]) return false;
         sp += len;
     }
     return false;
@@ -269,8 +269,8 @@ void test_strpool_alphabetical_search(dict d) {
 }
 
 // dict is in alphabetical order
-bool in_dict(dict d, strv s) {
-    return strpool_alphabetical_search(d.pool, strpool_get(&d.pool, s));
+bool dictionary_word(dict d, char *s) {
+    return strpool_alphabetical_search(d.pool, s);
 }
 
 
@@ -279,16 +279,21 @@ char ALPHABET[] = "abcdefghijklmnopqrstuvwxyz";
 void wgolf(strpool *p, dict *d, strv dest, strv src, size_t start, size_t *n) {
     assert(dest.len == src.len);
     if (!strv_cmp(p, dest, src)) return;
-    int ac = 0;
-    char a;
-    while ((a = ALPHABET[ac++])) {
-        char temp = strpool_get(p, src)[start];
-        strpool_get(p, src)[start] = a;
-        if (strpool_get(p, dest)[start] == strpool_get(p, src)[start]) {
-            (*n)++;
-            wgolf(p, d, dest, src, start+1, n);
+    char *src_word = strpool_get(p, src);
+    char *dest_word = strpool_get(p, dest);
+    for (size_t i = start; i < src.len; ++i) {
+        char a;
+        size_t ac = 0;
+        char temp = src_word[i];
+        while ((a = ALPHABET[ac++])) {
+            src_word[i] = a;
+            if (dictionary_word(*d, src_word)) {
+                strcpy(strpool_get(p, src), src_word);
+                strcpy(strpool_get(p, dest), dest_word);
+                wgolf(p, d, dest, src, start+1, n);
+            }
+            src_word[i] = temp;
         }
-        strpool_get(p, src)[start] = temp;
     }
 }
 
@@ -316,4 +321,15 @@ int main(void) {
     size_t n = 0;
     wgolf(&p, &d, dest, src, 0, &n);
     printf("%s -> %s in %lu steps.\n", strpool_get(&p, src), strpool_get(&p, dest), n);
+
+    // print steps
+    size_t sp = dest.ptr;
+    while (sp != p.sp) {
+        size_t len = 0;
+        while (p.buf[len++]);
+        char result[len+1];
+        memcpy(result, p.buf+sp, sizeof(result));
+        printf("%s\n", result);
+        sp += len;
+    }
 }
