@@ -1,33 +1,28 @@
 #include <vector>
+#include <set>
+#include <map>
 #include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <numeric>
 #include <cctype>
+#include <climits>
 using namespace std;
 char ALPHABET[] = "abcdefghijklmnopqrstuvwxyz";
-vector<pair<string, string>> get_neighbors(vector<string> &dict, string &src) {
+vector<string> get_neighbors(vector<string> &dict, string &src) {
     // neighbors are words whose letters differ alphabetically by one at a time
     // head -> dead, heal, etc
-    vector<pair<string, string>> neighbors;
+    vector<string> neighbors;
     for (int i = 0; i < src.size(); ++i) {
         for (auto letter : ALPHABET) {
             string swapped = src;
             swapped[i] = letter;
             if (find(dict.begin(), dict.end(), swapped) != end(dict) && swapped != src) {
-                neighbors.push_back(make_pair(src, swapped));
+                neighbors.push_back(swapped);
             }
         }
     }
     return neighbors;
-}
-
-void test_get_neighbors(vector<string> &dict) {
-    string src = "head";
-    auto neighbors = get_neighbors(dict, src);
-    for (auto [word, next] : neighbors) {
-        cout << word << " -> " << next << "\n"; 
-    }
 }
 
 bool visited(const vector<pair<string, string>> &v, string &s) {
@@ -37,20 +32,13 @@ bool visited(const vector<pair<string, string>> &v, string &s) {
     });
 }
 
-int gsteps;
-void wgolf(vector<pair<string, string>> &links, vector<string> &dict, string &prev, string &src, string &dst) {
-    if (src == dst) {
-        cout << prev << " :: " << src << " :: " << dst << "\n";
-        return;
+void wgolf(map<string, set<string>> &links, vector<string> &dict, string &cur, string &dst) {
+    if (cur == dst) return;
+    for (auto &next : get_neighbors(dict, cur)) {
+        if (links[cur])
+        links[cur].insert(next);
+        wgolf(links, dict, next, dst);
     }
-    links.push_back(make_pair(prev, src));
-    for (auto &[word, dword] : get_neighbors(dict, src)) {
-        if (!visited(links, dword)) {
-            gsteps++;
-            wgolf(links, dict, word, dword, dst);
-        }
-    }
-
 }
 
 vector<string> load_dict(int wordlen) {
@@ -72,13 +60,20 @@ vector<string> load_dict(int wordlen) {
 }
 
 int main() {
-    vector<pair<string, string>> links;
+    map<string, set<string>> links;
     auto dict = load_dict(4);
     cout << dict[0] << "\n";
     string src = "warm";
     string dst = "cold";
     // test_get_neighbors(dict);
-    wgolf(links, dict, src, src, dst);
+    wgolf(links, dict, src, dst);
     cout << "finished steps\n";
-    printf("gsteps: %d\n", gsteps);
+    int max = INT_MIN;
+    int min = INT_MAX;
+    for (auto [w, v] : links) {
+        if (v.size() > max) max = v.size();
+        if (v.size() < min) min = v.size();
+    }
+    printf("most steps: %d\n", max);
+    printf("least steps: %d\n", min);
 }
