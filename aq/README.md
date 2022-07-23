@@ -1,5 +1,6 @@
 # aq
 deCrypter for Anglobal communications
+![screenshot](/aq/res/2021-07-13_22-30.png)<br />
 ```
 USAGE:
     aq [FLAGS] [QUERY]
@@ -13,6 +14,5 @@ ARGS:
     <QUERY>    an alphanumeric-encoded string
 ```
 ## TODO:
-- hex trinomes represent groups of three characters; print them across, diagonally.
 - derivation of the four Basins for each query (as an option)
 - loading and saving to a csv file of the matches in a given session.
